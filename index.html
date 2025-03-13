@@ -2,226 +2,127 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>StakeTokenETH DApp</title>
+  <title>APR Calculator</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    input, button { padding: 8px; margin: 5px; }
-    .section { margin-bottom: 20px; }
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    button { margin: 5px; padding: 8px; }
   </style>
 </head>
 <body>
-  <h1>StakeTokenETH DApp</h1>
+  <h1>APR Calculator</h1>
   <button id="connectWallet">Connect Wallet</button>
   <div id="walletAddress"></div>
-
-  <div class="section">
-    <h2>Contract Info</h2>
-    <button id="refreshData">Refresh Data</button>
-    <p>Token Balance: <span id="tokenBalance">0</span></p>
-    <p>Staked Amount: <span id="stakedAmount">0</span></p>
-    <p>Pending Reward: <span id="pendingReward">0</span></p>
-    <p>Contract Balance: <span id="contractBalance">0</span></p>
-  </div>
-
-  <div class="section">
-    <h2>Actions</h2>
-
-    <div>
-      <h3>Stake Token</h3>
-      <input type="number" id="stakeAmount" placeholder="Amount to stake">
-      <button id="maxStake">Max</button>
-      <button id="stakeButton">Stake</button>
-    </div>
-
-    <div>
-      <h3>Unstake Token</h3>
-      <input type="number" id="unstakeAmount" placeholder="Amount to unstake">
-      <button id="maxUnstake">Max</button>
-      <button id="unstakeButton">Unstake</button>
-    </div>
-
-    <div>
-      <h3>Claim Reward</h3>
-      <button id="claimRewardButton">Claim Reward</button>
-    </div>
-
-    <div>
-      <h3>Emergency Withdraw</h3>
-      <button id="emergencyWithdrawButton">Emergency Withdraw</button>
-    </div>
+  <br>
+  <button id="calculateAPR">Calculate APR</button>
+  <div style="margin-top: 20px;">
+    <p>Price of Monapepe (in wETH): <span id="price"></span></p>
+    <p>Total Staked Value (in MON): <span id="totalValue"></span></p>
+    <p>APR: <span id="apr"></span>%</p>
   </div>
 
   <script>
-    let provider, signer, contract, tokenContract, userAddress;
-
-    // Contract Addresses
-    const tokenAddress = "0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA";
+    let provider, signer, userAddress;
+    
+    // Addresses
+    const poolAddress    = "0x4a0A2B293A34c54d0965D23f8131A3D2c0b91290";
+    const wETHAddress    = "0x3bb9AFB94c82752E47706A10779EA525Cf95dc27";
+    const monapepeAddress= "0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA";
     const stakingAddress = "0x9a6F85f4090292eE248B2C999a3E1422B1297177";
 
-    // ABI Definitions
+    // Minimal ABI for Uniswap V2 Pool
+    const poolABI = [
+      "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
+      "function token0() external view returns (address)",
+      "function token1() external view returns (address)"
+    ];
+    
+    // Minimal ABI for Staking Contract (totalStaked is a public variable)
     const stakingABI = [
-      "function stake(uint256 amount) external",
-      "function unstake(uint256 amount) external",
-      "function claimReward() external",
-      "function emergencyWithdraw() external",
-      "function pendingReward(address user) external view returns (uint256)",
-      "function getStakedAmount(address user) external view returns (uint256)",
-      "function contractBalance() external view returns (uint256)"
+      "function totalStaked() external view returns (uint256)"
     ];
 
-    const tokenABI = [
-      "function balanceOf(address owner) external view returns (uint256)",
-      "function approve(address spender, uint256 amount) external returns (bool)",
-      "function allowance(address owner, address spender) external view returns (uint256)"
-    ];
-
-    async function checkNetwork() {
-      if (!window.ethereum) return;
-      const chainId = await window.ethereum.request({ method: "eth_chainId" });
-      if (chainId !== "0x279f") { // 0x279f == 10143 in hex
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x279f" }],
-          });
-          console.log("Switched to Monad Testnet");
-        } catch (switchError) {
-          if (switchError.code === 4902) {
-            try {
-              await window.ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [{
-                  chainId: "0x279f",
-                  chainName: "Monad Testnet",
-                  nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-                  rpcUrls: ["https://10143.rpc.thirdweb.com"],
-                }],
-              });
-              console.log("Monad Testnet added and switched");
-            } catch (addError) {
-              console.error("Error adding network: ", addError);
-              alert("Please add the Monad Testnet network manually using the provided RPC.");
-            }
-          } else {
-            console.error("Error switching network: ", switchError);
-            alert("Please switch to the Monad Testnet network.");
-          }
-        }
-      }
-    }
-
+    // Connect to MetaMask wallet
     async function connectWallet() {
-      if (window.ethereum) {
-        try {
-          await checkNetwork();
-          await window.ethereum.request({ method: "eth_requestAccounts" });
-          provider = new ethers.providers.Web3Provider(window.ethereum);
-          // Disable ENS lookups on networks that do not support ENS:
-          provider.ens = null;
-          signer = provider.getSigner();
-          userAddress = await signer.getAddress();
-          document.getElementById("walletAddress").innerText = "Connected: " + userAddress;
-          contract = new ethers.Contract(stakingAddress, stakingABI, signer);
-          tokenContract = new ethers.Contract(tokenAddress, tokenABI, signer);
-          refreshData();
-        } catch (error) {
-          console.error(error);
-          alert("Wallet connection failed.");
-        }
-      } else {
+      if (!window.ethereum) {
         alert("Please install MetaMask.");
+        return;
       }
-    }
-
-    async function refreshData() {
-      if (!contract || !tokenContract || !userAddress) return;
       try {
-        const tokenBalance = await tokenContract.balanceOf(userAddress);
-        const stakedAmount = await contract.getStakedAmount(userAddress);
-        const pendingReward = await contract.pendingReward(userAddress);
-        const contractBal = await contract.contractBalance();
-
-        document.getElementById("tokenBalance").innerText = ethers.utils.formatEther(tokenBalance);
-        document.getElementById("stakedAmount").innerText = ethers.utils.formatEther(stakedAmount);
-        document.getElementById("pendingReward").innerText = ethers.utils.formatEther(pendingReward);
-        document.getElementById("contractBalance").innerText = ethers.utils.formatEther(contractBal);
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        // Disable ENS lookup on networks without ENS support
+        provider.ens = null;
+        signer = provider.getSigner();
+        userAddress = await signer.getAddress();
+        document.getElementById("walletAddress").innerText = "Connected: " + userAddress;
       } catch (error) {
         console.error(error);
-        alert("Error fetching contract data.");
+        alert("Wallet connection failed.");
       }
     }
 
-    async function stakeTokens() {
-      const amount = document.getElementById("stakeAmount").value;
-      if (!amount || isNaN(amount)) return alert("Enter a valid amount.");
-
-      const parsedAmount = ethers.utils.parseEther(amount);
-      const allowance = await tokenContract.allowance(userAddress, stakingAddress);
-
-      if (allowance.lt(parsedAmount)) {
-        const approveTx = await tokenContract.approve(stakingAddress, parsedAmount);
-        await approveTx.wait();
+    // Calculate APR based on on-chain data
+    async function calculateAPR() {
+      if (!provider) {
+        alert("Please connect your wallet first.");
+        return;
       }
-
-      const tx = await contract.stake(parsedAmount);
-      await tx.wait();
-      alert("Stake successful.");
-      refreshData();
-    }
-
-    async function unstakeTokens() {
-      const amount = document.getElementById("unstakeAmount").value;
-      if (!amount || isNaN(amount)) return alert("Enter a valid amount.");
-
-      const tx = await contract.unstake(ethers.utils.parseEther(amount));
-      await tx.wait();
-      alert("Unstake successful.");
-      refreshData();
-    }
-
-    async function maxStake() {
-      const balance = await tokenContract.balanceOf(userAddress);
-      document.getElementById("stakeAmount").value = ethers.utils.formatEther(balance);
-    }
-
-    async function maxUnstake() {
-      const staked = await contract.getStakedAmount(userAddress);
-      document.getElementById("unstakeAmount").value = ethers.utils.formatEther(staked);
-    }
-
-    async function claimReward() {
       try {
-        const tx = await contract.claimReward();
-        await tx.wait();
-        alert("Reward claimed successfully.");
-        refreshData();
+        // Instantiate Uniswap pool contract and fetch reserves and token order
+        const poolContract = new ethers.Contract(poolAddress, poolABI, provider);
+        const reserves = await poolContract.getReserves();
+        const token0 = await poolContract.token0();
+        const token1 = await poolContract.token1();
+        
+        let reserveWETH, reserveMonapepe;
+        // Determine which reserve is which based on token addresses
+        if (token0.toLowerCase() === wETHAddress.toLowerCase() && token1.toLowerCase() === monapepeAddress.toLowerCase()) {
+          reserveWETH     = reserves.reserve0;
+          reserveMonapepe = reserves.reserve1;
+        } else if (token0.toLowerCase() === monapepeAddress.toLowerCase() && token1.toLowerCase() === wETHAddress.toLowerCase()) {
+          reserveWETH     = reserves.reserve1;
+          reserveMonapepe = reserves.reserve0;
+        } else {
+          alert("Pool does not contain the expected tokens.");
+          return;
+        }
+        
+        // Convert reserves from BigNumber to a float (assuming 18 decimals)
+        const rWETH     = parseFloat(ethers.utils.formatEther(reserveWETH));
+        const rMonapepe = parseFloat(ethers.utils.formatEther(reserveMonapepe));
+        
+        // Price of one Monapepe in wETH: Price = R_weth / R_monapepe
+        const price = rWETH / rMonapepe;
+        document.getElementById("price").innerText = price.toFixed(6);
+        
+        // Instantiate the staking contract and fetch total staked Monapepe
+        const stakingContract = new ethers.Contract(stakingAddress, stakingABI, provider);
+        const totalStakedBN = await stakingContract.totalStaked();
+        const stakedMonapepe = parseFloat(ethers.utils.formatEther(totalStakedBN));
+        
+        // Total staked value in MON is calculated as:
+        // Total_Value = stakedMonapepe * Price
+        // (Assuming 1 MON is equivalent to 1 wETH)
+        const totalValue = stakedMonapepe * price;
+        document.getElementById("totalValue").innerText = totalValue.toFixed(6);
+        
+        // Annual reward is 8765 MON.
+        const annualReward = 8765;
+        // APR = (Annual Reward / Total Staked Value) * 100%
+        let apr = 0;
+        if (totalValue > 0) {
+          apr = (annualReward / totalValue) * 100;
+        }
+        document.getElementById("apr").innerText = apr.toFixed(2);
       } catch (error) {
         console.error(error);
-        alert("Error claiming reward.");
+        alert("Error calculating APR. See console for details.");
       }
     }
-
-    async function emergencyWithdraw() {
-      try {
-        const tx = await contract.emergencyWithdraw();
-        await tx.wait();
-        alert("Emergency withdraw successful.");
-        refreshData();
-      } catch (error) {
-        console.error(error);
-        alert("Error during emergency withdraw.");
-      }
-    }
-
+    
     document.getElementById("connectWallet").addEventListener("click", connectWallet);
-    document.getElementById("refreshData").addEventListener("click", refreshData);
-    document.getElementById("stakeButton").addEventListener("click", stakeTokens);
-    document.getElementById("unstakeButton").addEventListener("click", unstakeTokens);
-    document.getElementById("maxStake").addEventListener("click", maxStake);
-    document.getElementById("maxUnstake").addEventListener("click", maxUnstake);
-    document.getElementById("claimRewardButton").addEventListener("click", claimReward);
-    document.getElementById("emergencyWithdrawButton").addEventListener("click", emergencyWithdraw);
+    document.getElementById("calculateAPR").addEventListener("click", calculateAPR);
   </script>
 </body>
 </html>
