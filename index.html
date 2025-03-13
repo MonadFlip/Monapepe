@@ -3,247 +3,115 @@
 <head>
   <meta charset="UTF-8">
   <title>Staking & APR Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Using Roboto for a modern look -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    :root {
-      --primary-color: #9c27b0;
-      --primary-dark: #7b1fa2;
-      --secondary-color: #ab47bc;
-      --background-color: #f5f5f5;
-      --text-color: #333;
-    }
-    * {
-      box-sizing: border-box;
-    }
     body {
-      margin: 0;
-      padding: 0;
       font-family: 'Roboto', sans-serif;
       background: linear-gradient(135deg, #ce93d8, #ab47bc);
-      color: var(--text-color);
+      color: #333;
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      margin: 0;
     }
     .container {
-      width: 95%;
-      max-width: 1200px;
-      margin: 20px auto;
-    }
-    header {
-      text-align: center;
-      margin-bottom: 30px;
-      color: #fff;
-    }
-    header h1 {
-      font-size: 2.5rem;
-      margin: 0;
-      text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
-    }
-    header button {
-      background: var(--primary-color);
-      border: none;
-      color: #fff;
-      padding: 10px 20px;
-      margin-top: 10px;
-      border-radius: 5px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.3s ease, transform 0.3s ease;
-    }
-    header button:hover {
-      background: var(--primary-dark);
-      transform: scale(1.05);
-    }
-    .card {
-      background: #fff;
+      width: 90%;
+      max-width: 800px;
+      background: white;
+      padding: 20px;
       border-radius: 10px;
       box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-      padding: 20px;
-      margin-bottom: 20px;
-      animation: fadeInUp 0.8s ease both;
+      text-align: center;
     }
-    .card h2 {
-      margin-top: 0;
-      color: var(--primary-color);
-      border-bottom: 2px solid var(--primary-color);
-      padding-bottom: 5px;
-    }
-    .card p {
-      margin: 10px 0;
-      font-size: 1rem;
-    }
-    .card button {
-      background: var(--primary-color);
+    button {
+      background: #9c27b0;
+      color: white;
       border: none;
-      color: #fff;
-      padding: 10px 20px;
+      padding: 10px 15px;
+      margin-top: 10px;
       border-radius: 5px;
       cursor: pointer;
-      font-size: 1rem;
-      transition: background 0.3s, transform 0.3s;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #7b1fa2;
+    }
+    .status-message {
       margin-top: 10px;
-    }
-    .card button:hover {
-      background: var(--primary-dark);
-      transform: scale(1.05);
-    }
-    .input-group {
-      display: flex;
-      align-items: center;
-      margin: 15px 0;
-    }
-    .input-group input {
-      flex: 1;
-      padding: 10px;
-      font-size: 1rem;
-      border: 1px solid #ddd;
+      padding: 8px;
       border-radius: 5px;
-      margin-right: 10px;
+      font-size: 14px;
+      color: white;
+      display: none;
     }
-    .input-group button {
-      padding: 10px 15px;
+    .success {
+      background-color: #4caf50;
     }
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    /* Responsive layout */
-    @media (min-width: 768px) {
-      .flex-row {
-        display: flex;
-        gap: 20px;
-      }
-      .flex-row .card {
-        flex: 1;
-      }
+    .error {
+      background-color: #f44336;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    
-    <!-- Dashboard & APR Section (top of page) -->
-    <div class="card">
-      <h2>Dashboard & APR</h2>
-      <button id="connectWallet">Connect Wallet</button>
-      <div id="walletAddress"></div>
-      <p>Price of Monapepe (in MON): <span id="price">-</span></p>
-      <p>Total Staked Value (in MON): <span id="totalValue">-</span></p>
-      <p>APR: <span id="apr">-</span>%</p>
-    </div>
-    
-    <!-- Staking Interface Section -->
-    <div class="card">
-      <h2>Staking Interface</h2>
-      <p>Token Balance: <span id="tokenBalance">0</span></p>
-      <p>Your Staked Amount: <span id="userStaked">0</span></p>
-      <p>Pending Reward: <span id="pendingReward">0</span></p>
-      <button id="claimRewardButton">Claim Reward</button>
-      <div class="input-group">
-        <input type="number" id="stakeAmount" placeholder="Amount to stake">
-        <button id="maxStake">Max</button>
-        <button id="stakeButton">Stake</button>
-      </div>
-      <div class="input-group">
-        <input type="number" id="unstakeAmount" placeholder="Amount to unstake">
-        <button id="maxUnstake">Max</button>
-        <button id="unstakeButton">Unstake</button>
-      </div>
-    </div>
+    <h1>Staking & APR Dashboard</h1>
+    <button id="connectWallet">Connect Wallet</button>
+    <div id="walletAddress"></div>
+    <div id="statusMessage" class="status-message"></div>
+
+    <h2>Dashboard</h2>
+    <p>Price of Monapepe (in wETH): <span id="price">-</span></p>
+    <p>Total Staked Value (in MON): <span id="totalValue">-</span></p>
+    <p>APR: <span id="apr">-</span>%</p>
+
+    <h2>Staking</h2>
+    <p>Token Balance: <span id="tokenBalance">0</span></p>
+    <p>Your Staked Amount: <span id="userStaked">0</span></p>
+    <p>Pending Reward: <span id="pendingReward">0</span></p>
+    <button id="claimRewardButton">Claim Reward</button>
+
+    <input type="number" id="stakeAmount" placeholder="Amount to stake">
+    <button id="stakeButton">Stake</button>
+
+    <input type="number" id="unstakeAmount" placeholder="Amount to unstake">
+    <button id="unstakeButton">Unstake</button>
   </div>
-  
+
   <script>
     let provider, signer, userAddress;
     let tokenContract, stakingContract;
     
-    // Addresses
-    const poolAddress      = "0x4a0A2B293A34c54d0965D23f8131A3D2c0b91290";  // Uniswap V2 pool
-    const wETHAddress      = "0x3bb9AFB94c82752E47706A10779EA525Cf95dc27";  // wETH token
-    const monapepeAddress  = "0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA";  // Monapepe token
-    const stakingAddress   = "0x9a6F85f4090292eE248B2C999a3E1422B1297177";  // Staking contract
-
-    // ABIs
-    const poolABI = [
-      "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
-      "function token0() external view returns (address)",
-      "function token1() external view returns (address)"
-    ];
-
+    const stakingAddress = "0x9a6F85f4090292eE248B2C999a3E1422B1297177";
+    const monapepeAddress = "0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA";
     const stakingABI = [
       "function stake(uint256 amount) external",
       "function unstake(uint256 amount) external",
       "function claimReward() external",
-      "function emergencyWithdraw() external",
       "function pendingReward(address user) external view returns (uint256)",
-      "function getStakedAmount(address user) external view returns (uint256)",
-      "function totalStaked() external view returns (uint256)"
+      "function getStakedAmount(address user) external view returns (uint256)"
     ];
-
     const tokenABI = [
       "function balanceOf(address owner) external view returns (uint256)",
-      "function approve(address spender, uint256 amount) external returns (bool)",
-      "function allowance(address owner, address spender) external view returns (uint256)"
+      "function approve(address spender, uint256 amount) external returns (bool)"
     ];
 
-    // Check network (Monad Testnet: chainId 0x279f = 10143)
-    async function checkNetwork() {
-      if (!window.ethereum) return;
-      const chainId = await window.ethereum.request({ method: "eth_chainId" });
-      if (chainId !== "0x279f") {
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x279f" }],
-          });
-          console.log("Switched to Monad Testnet");
-        } catch (switchError) {
-          if (switchError.code === 4902) {
-            try {
-              await window.ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [{
-                  chainId: "0x279f",
-                  chainName: "Monad Testnet",
-                  nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-                  rpcUrls: ["https://10143.rpc.thirdweb.com"],
-                }],
-              });
-              console.log("Monad Testnet added and switched");
-            } catch (addError) {
-              console.error("Error adding network:", addError);
-              alert("Please add the Monad Testnet network manually using the provided RPC.");
-            }
-          } else {
-            console.error("Error switching network:", switchError);
-            alert("Please switch to the Monad Testnet network.");
-          }
-        }
-      }
+    function showMessage(message, type) {
+      const msgBox = document.getElementById("statusMessage");
+      msgBox.textContent = message;
+      msgBox.className = `status-message ${type}`;
+      msgBox.style.display = "block";
+      setTimeout(() => { msgBox.style.display = "none"; }, 4000);
     }
 
-    // Connect wallet and instantiate contracts
     async function connectWallet() {
       if (!window.ethereum) {
-        alert("Please install MetaMask.");
+        showMessage("Please install MetaMask.", "error");
         return;
       }
       try {
-        await checkNetwork();
-        await window.ethereum.request({ method: "eth_requestAccounts" });
         provider = new ethers.providers.Web3Provider(window.ethereum);
-        provider.ens = null;
         signer = provider.getSigner();
         userAddress = await signer.getAddress();
         document.getElementById("walletAddress").innerText = "Connected: " + userAddress;
@@ -251,169 +119,73 @@
         tokenContract = new ethers.Contract(monapepeAddress, tokenABI, signer);
         stakingContract = new ethers.Contract(stakingAddress, stakingABI, signer);
         
+        showMessage("Wallet connected successfully!", "success");
         refreshDashboard();
       } catch (error) {
-        console.error(error);
-        alert("Wallet connection failed.");
+        showMessage("Wallet connection failed.", "error");
       }
     }
 
-    // Refresh data for staking interface
-    async function refreshData() {
+    async function refreshDashboard() {
       if (!tokenContract || !stakingContract || !userAddress) return;
       try {
         const tokenBalBN = await tokenContract.balanceOf(userAddress);
-        const tokenBal = parseFloat(ethers.utils.formatEther(tokenBalBN));
-        document.getElementById("tokenBalance").innerText = tokenBal.toFixed(6);
-        
+        document.getElementById("tokenBalance").innerText = ethers.utils.formatEther(tokenBalBN);
+
         const userStakedBN = await stakingContract.getStakedAmount(userAddress);
-        const userStaked = parseFloat(ethers.utils.formatEther(userStakedBN));
-        document.getElementById("userStaked").innerText = userStaked.toFixed(6);
-        
+        document.getElementById("userStaked").innerText = ethers.utils.formatEther(userStakedBN);
+
         const pendingBN = await stakingContract.pendingReward(userAddress);
-        const pending = parseFloat(ethers.utils.formatEther(pendingBN));
-        document.getElementById("pendingReward").innerText = pending.toFixed(6);
+        document.getElementById("pendingReward").innerText = ethers.utils.formatEther(pendingBN);
       } catch (error) {
-        console.error(error);
-        alert("Error refreshing staking data.");
+        showMessage("Error refreshing dashboard.", "error");
       }
     }
 
-    // APR Calculator: uses Uniswap pool data and staking contract total staked amount
-    async function calculateAPR() {
-      if (!provider) {
-        alert("Please connect your wallet first.");
-        return;
-      }
-      try {
-        const poolContract = new ethers.Contract(poolAddress, poolABI, provider);
-        const reserves = await poolContract.getReserves();
-        const token0 = await poolContract.token0();
-        const token1 = await poolContract.token1();
-        
-        let reserveWETH, reserveMonapepe;
-        if (token0.toLowerCase() === wETHAddress.toLowerCase() && token1.toLowerCase() === monapepeAddress.toLowerCase()) {
-          reserveWETH = reserves.reserve0;
-          reserveMonapepe = reserves.reserve1;
-        } else if (token0.toLowerCase() === monapepeAddress.toLowerCase() && token1.toLowerCase() === wETHAddress.toLowerCase()) {
-          reserveWETH = reserves.reserve1;
-          reserveMonapepe = reserves.reserve0;
-        } else {
-          alert("Pool does not contain the expected tokens.");
-          return;
-        }
-        const rWETH = parseFloat(ethers.utils.formatEther(reserveWETH));
-        const rMonapepe = parseFloat(ethers.utils.formatEther(reserveMonapepe));
-        
-        // Price of one Monapepe in wETH
-        const price = rWETH / rMonapepe;
-        document.getElementById("price").innerText = price.toFixed(6);
-        
-        // Fetch total staked amount from the staking contract
-        const totalStakedBN = await stakingContract.totalStaked();
-        const totalStaked = parseFloat(ethers.utils.formatEther(totalStakedBN));
-        // Total staked value (assuming 1 MON = 1 wETH)
-        const totalValue = totalStaked * price;
-        document.getElementById("totalValue").innerText = totalValue.toFixed(6);
-        
-        // Annual reward is 8765 MON; APR = (annualReward / totalValue) * 100%
-        let apr = 0;
-        if (totalValue > 0) {
-          apr = (8765 / totalValue) * 100;
-        }
-        document.getElementById("apr").innerText = apr.toFixed(2);
-      } catch (error) {
-        console.error(error);
-        alert("Error calculating APR.");
-      }
-    }
-
-    // Combined function to refresh all dashboard data
-    async function refreshDashboard() {
-      await refreshData();
-      await calculateAPR();
-    }
-
-    // Stake tokens
     async function stakeTokens() {
       const amount = document.getElementById("stakeAmount").value;
-      if (!amount || isNaN(amount)) return alert("Enter a valid amount.");
+      if (!amount || isNaN(amount)) return showMessage("Enter a valid amount.", "error");
+
       try {
         const parsedAmount = ethers.utils.parseEther(amount);
-        const allowance = await tokenContract.allowance(userAddress, stakingAddress);
-        if (allowance.lt(parsedAmount)) {
-          const approveTx = await tokenContract.approve(stakingAddress, parsedAmount);
-          await approveTx.wait();
-        }
         const tx = await stakingContract.stake(parsedAmount);
         await tx.wait();
-        alert("Stake successful.");
+        showMessage("Stake successful!", "success");
         refreshDashboard();
       } catch (error) {
-        console.error(error);
-        alert("Error staking tokens.");
+        showMessage("Error staking tokens.", "error");
       }
     }
 
-    // Unstake tokens
     async function unstakeTokens() {
       const amount = document.getElementById("unstakeAmount").value;
-      if (!amount || isNaN(amount)) return alert("Enter a valid amount.");
+      if (!amount || isNaN(amount)) return showMessage("Enter a valid amount.", "error");
+
       try {
         const tx = await stakingContract.unstake(ethers.utils.parseEther(amount));
         await tx.wait();
-        alert("Unstake successful.");
+        showMessage("Unstake successful!", "success");
         refreshDashboard();
       } catch (error) {
-        console.error(error);
-        alert("Error unstaking tokens.");
+        showMessage("Error unstaking tokens.", "error");
       }
     }
 
-    // "Max" button functions
-    async function maxStake() {
-      try {
-        const tokenBalBN = await tokenContract.balanceOf(userAddress);
-        document.getElementById("stakeAmount").value = ethers.utils.formatEther(tokenBalBN);
-      } catch (error) {
-        console.error(error);
-        alert("Error fetching max stake.");
-      }
-    }
-
-    async function maxUnstake() {
-      try {
-        const userStakedBN = await stakingContract.getStakedAmount(userAddress);
-        document.getElementById("unstakeAmount").value = ethers.utils.formatEther(userStakedBN);
-      } catch (error) {
-        console.error(error);
-        alert("Error fetching max unstake.");
-      }
-    }
-
-    // Claim reward
     async function claimReward() {
       try {
         const tx = await stakingContract.claimReward();
         await tx.wait();
-        alert("Reward claimed successfully.");
+        showMessage("Reward claimed successfully!", "success");
         refreshDashboard();
       } catch (error) {
-        console.error(error);
-        alert("Error claiming reward.");
+        showMessage("Error claiming reward.", "error");
       }
     }
 
-    // Event listeners
     document.getElementById("connectWallet").addEventListener("click", connectWallet);
     document.getElementById("stakeButton").addEventListener("click", stakeTokens);
     document.getElementById("unstakeButton").addEventListener("click", unstakeTokens);
-    document.getElementById("maxStake").addEventListener("click", maxStake);
-    document.getElementById("maxUnstake").addEventListener("click", maxUnstake);
     document.getElementById("claimRewardButton").addEventListener("click", claimReward);
-    
-    // Auto-refresh the dashboard every 5 seconds
-    setInterval(refreshDashboard, 5000);
   </script>
 </body>
 </html>
