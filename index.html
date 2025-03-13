@@ -3,72 +3,84 @@
 <head>
   <meta charset="UTF-8">
   <title>Staking & APR Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Using Roboto font for a modern look -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    /* Global Styles & Color Scheme */
+    /* Global Styles */
     body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #8e44ad, #5e3370);
-      color: #fdfdfd;
-      padding: 20px;
       margin: 0;
-      animation: fadeIn 1s ease-in-out;
-    }
-    h1, h2, h3, p {
-      margin: 0 0 10px 0;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-      font-size: 2.5em;
-      text-shadow: 1px 1px 2px #000;
-    }
-    .section {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 10px;
       padding: 20px;
-      margin-bottom: 20px;
-      animation: slideUp 0.8s ease-out;
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #ce93d8, #ab47bc);
+      color: #333;
     }
-    button, input {
-      padding: 10px 15px;
-      margin: 5px;
+    
+    h1, h2, h3 {
+      color: #4a148c;
+    }
+    
+    /* Section styles */
+    .section {
+      background: #fff;
+      border: 2px solid #9c27b0;
+      border-radius: 10px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      animation: fadeIn 1s ease-out both;
+    }
+    
+    /* Button styles */
+    button {
+      background-color: #9c27b0;
+      color: #fff;
       border: none;
       border-radius: 5px;
-      transition: background 0.3s ease;
+      padding: 8px 16px;
+      margin: 5px;
       cursor: pointer;
+      transition: all 0.3s ease;
     }
-    button {
-      background: #9b59b6;
-      color: #fff;
-      font-weight: bold;
-    }
+    
     button:hover {
-      background: #8e44ad;
+      background-color: #7b1fa2;
+      transform: scale(1.05);
     }
-    input {
-      width: 200px;
-      border: 1px solid rgba(255,255,255,0.3);
-      background: rgba(255,255,255,0.2);
-      color: #fff;
+    
+    input[type="number"] {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      width: 150px;
+      margin-right: 5px;
     }
-    /* Keyframes */
+    
+    /* FadeIn animation */
     @keyframes fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-    @keyframes slideUp {
-      from { transform: translateY(20px); opacity: 0; }
-      to   { transform: translateY(0); opacity: 1; }
+    
+    /* Dashboard button style */
+    #refreshDashboard {
+      font-weight: 500;
     }
   </style>
 </head>
 <body>
   <h1>Staking & APR Dashboard</h1>
   <button id="connectWallet">Connect Wallet</button>
-  <div id="walletAddress" style="text-align:center; margin-bottom:20px;"></div>
-
+  <div id="walletAddress"></div>
+  
   <!-- Dashboard & APR Section (moved to the top) -->
   <div class="section">
     <h2>Dashboard & APR</h2>
@@ -104,7 +116,7 @@
     </div>
   </div>
 
-  <!-- Emergency Actions Section (moved to its own section at the bottom) -->
+  <!-- Emergency Section -->
   <div class="section">
     <h2>Emergency Actions</h2>
     <button id="emergencyWithdrawButton">Emergency Withdraw</button>
@@ -204,7 +216,7 @@
       }
     }
 
-    // Refresh staking interface data
+    // Refresh data for staking interface
     async function refreshData() {
       if (!tokenContract || !stakingContract || !userAddress) return;
       try {
@@ -350,7 +362,7 @@
       }
     }
 
-    // Emergency withdraw
+    // Emergency withdraw (in separate Emergency Actions section)
     async function emergencyWithdraw() {
       try {
         const tx = await stakingContract.emergencyWithdraw();
