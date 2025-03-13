@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>StakeTokenETH DApp</title>
-  <!-- Thư viện ethers.js -->
-  <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+  <!-- Ethers.js library from jsDelivr -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js" type="application/javascript"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     input, button { padding: 8px; margin: 5px 0; }
@@ -13,36 +13,36 @@
 </head>
 <body>
   <h1>StakeTokenETH DApp</h1>
-  <button id="connectWallet">Kết nối ví</button>
+  <button id="connectWallet">Connect Wallet</button>
   <div id="walletAddress"></div>
 
   <div class="section">
-    <h2>Thông tin hợp đồng</h2>
-    <button id="refreshData">Làm mới dữ liệu</button>
-    <p>Số lượng đã stake: <span id="stakedAmount">0</span></p>
-    <p>Phần thưởng đang chờ: <span id="pendingReward">0</span></p>
-    <p>Số dư hợp đồng: <span id="contractBalance">0</span></p>
+    <h2>Contract Info</h2>
+    <button id="refreshData">Refresh Data</button>
+    <p>Staked Amount: <span id="stakedAmount">0</span></p>
+    <p>Pending Reward: <span id="pendingReward">0</span></p>
+    <p>Contract Balance: <span id="contractBalance">0</span></p>
   </div>
 
   <div class="section">
-    <h2>Chức năng</h2>
+    <h2>Actions</h2>
     <div>
       <h3>Stake Token</h3>
-      <input type="number" id="stakeAmount" placeholder="Số lượng cần stake">
+      <input type="number" id="stakeAmount" placeholder="Amount to stake">
       <button id="stakeButton">Stake</button>
     </div>
     <div>
       <h3>Unstake Token</h3>
-      <input type="number" id="unstakeAmount" placeholder="Số lượng cần unstake">
+      <input type="number" id="unstakeAmount" placeholder="Amount to unstake">
       <button id="unstakeButton">Unstake</button>
     </div>
     <div>
       <h3>Claim Reward</h3>
-      <button id="claimRewardButton">Nhận thưởng</button>
+      <button id="claimRewardButton">Claim Reward</button>
     </div>
     <div>
       <h3>Emergency Withdraw</h3>
-      <button id="emergencyWithdrawButton">Rút khẩn cấp</button>
+      <button id="emergencyWithdrawButton">Emergency Withdraw</button>
     </div>
   </div>
 
@@ -52,8 +52,8 @@
     let contract;
     let userAddress;
 
-    // Thông tin hợp đồng
-    const contractAddress = "YOUR_CONTRACT_ADDRESS"; // Thay bằng địa chỉ hợp đồng của bạn
+    // Contract information
+    const contractAddress = "YOUR_CONTRACT_ADDRESS"; // Replace with your deployed contract address
     const abi = [
       "function stake(uint256 amount) external",
       "function unstake(uint256 amount) external",
@@ -64,7 +64,7 @@
       "function contractBalance() external view returns (uint256)"
     ];
 
-    // Kết nối ví MetaMask
+    // Connect to MetaMask wallet
     async function connectWallet() {
       if (window.ethereum) {
         try {
@@ -72,19 +72,19 @@
           provider = new ethers.providers.Web3Provider(window.ethereum);
           signer = provider.getSigner();
           userAddress = await signer.getAddress();
-          document.getElementById("walletAddress").innerText = "Đã kết nối: " + userAddress;
+          document.getElementById("walletAddress").innerText = "Connected: " + userAddress;
           contract = new ethers.Contract(contractAddress, abi, signer);
           refreshData();
         } catch (error) {
           console.error(error);
-          alert("Kết nối ví thất bại.");
+          alert("Failed to connect wallet.");
         }
       } else {
-        alert("Vui lòng cài đặt MetaMask.");
+        alert("Please install MetaMask.");
       }
     }
 
-    // Lấy dữ liệu từ hợp đồng
+    // Refresh contract data
     async function refreshData() {
       if (!contract || !userAddress) return;
       try {
@@ -96,46 +96,45 @@
         document.getElementById("contractBalance").innerText = ethers.utils.formatEther(balance);
       } catch (error) {
         console.error(error);
-        alert("Có lỗi khi lấy dữ liệu hợp đồng.");
+        alert("Error fetching contract data.");
       }
     }
 
-    // Stake token
+    // Stake tokens
     async function stakeTokens() {
       const amount = document.getElementById("stakeAmount").value;
       if (!amount || isNaN(amount)) {
-        alert("Vui lòng nhập số lượng hợp lệ.");
+        alert("Please enter a valid amount.");
         return;
       }
       try {
-        // Giả sử token có 18 chữ số thập phân
-        const stakeAmount = ethers.utils.parseUnits(amount, 18);
+        const stakeAmount = ethers.utils.parseUnits(amount, 18); // Assuming 18 decimals
         const tx = await contract.stake(stakeAmount);
         await tx.wait();
-        alert("Stake thành công.");
+        alert("Stake successful.");
         refreshData();
       } catch (error) {
         console.error(error);
-        alert("Có lỗi khi stake token.");
+        alert("Error staking tokens.");
       }
     }
 
-    // Unstake token
+    // Unstake tokens
     async function unstakeTokens() {
       const amount = document.getElementById("unstakeAmount").value;
       if (!amount || isNaN(amount)) {
-        alert("Vui lòng nhập số lượng hợp lệ.");
+        alert("Please enter a valid amount.");
         return;
       }
       try {
         const unstakeAmount = ethers.utils.parseUnits(amount, 18);
         const tx = await contract.unstake(unstakeAmount);
         await tx.wait();
-        alert("Unstake thành công.");
+        alert("Unstake successful.");
         refreshData();
       } catch (error) {
         console.error(error);
-        alert("Có lỗi khi unstake token.");
+        alert("Error unstaking tokens.");
       }
     }
 
@@ -144,11 +143,11 @@
       try {
         const tx = await contract.claimReward();
         await tx.wait();
-        alert("Nhận thưởng thành công.");
+        alert("Reward claimed successfully.");
         refreshData();
       } catch (error) {
         console.error(error);
-        alert("Có lỗi khi nhận thưởng.");
+        alert("Error claiming reward.");
       }
     }
 
@@ -157,15 +156,15 @@
       try {
         const tx = await contract.emergencyWithdraw();
         await tx.wait();
-        alert("Rút khẩn cấp thành công.");
+        alert("Emergency withdraw successful.");
         refreshData();
       } catch (error) {
         console.error(error);
-        alert("Có lỗi khi rút khẩn cấp.");
+        alert("Error with emergency withdraw.");
       }
     }
 
-    // Sự kiện click cho các nút
+    // Event listeners for buttons
     document.getElementById("connectWallet").addEventListener("click", connectWallet);
     document.getElementById("refreshData").addEventListener("click", refreshData);
     document.getElementById("stakeButton").addEventListener("click", stakeTokens);
