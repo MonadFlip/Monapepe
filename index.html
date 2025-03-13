@@ -410,19 +410,6 @@
       }
     }
 
-    // Emergency withdraw (in separate Emergency Actions section)
-    async function emergencyWithdraw() {
-      try {
-        const tx = await stakingContract.emergencyWithdraw();
-        await tx.wait();
-        alert("Emergency withdraw successful.");
-        refreshDashboard();
-      } catch (error) {
-        console.error(error);
-        alert("Error during emergency withdraw.");
-      }
-    }
-
     // Event listeners
     document.getElementById("connectWallet").addEventListener("click", connectWallet);
     document.getElementById("stakeButton").addEventListener("click", stakeTokens);
@@ -430,7 +417,6 @@
     document.getElementById("maxStake").addEventListener("click", maxStake);
     document.getElementById("maxUnstake").addEventListener("click", maxUnstake);
     document.getElementById("claimRewardButton").addEventListener("click", claimReward);
-    document.getElementById("emergencyWithdrawButton").addEventListener("click", emergencyWithdraw);
     
     // Auto-refresh the dashboard every 5 seconds
     setInterval(refreshDashboard, 5000);
