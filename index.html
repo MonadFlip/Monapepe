@@ -1,0 +1,116 @@
+import { useState, useEffect } from "react";
+import { ethers } from "ethers";
+import { Button } from "@/components/ui/button";
+
+const tokenAddress = "0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA";
+const contractAddress = "0x9a6F85f4090292eE248B2C999a3E1422B1297177";
+const abi = [
+    "function stake(uint256 amount) external",
+    "function unstake(uint256 amount) external",
+    "function claimReward() external",
+    "function getStakedAmount(address user) external view returns (uint256)",
+    "function pendingReward(address user) external view returns (uint256)",
+    "function contractBalance() external view returns (uint256)"
+];
+const tokenAbi = ["function balanceOf(address owner) external view returns (uint256)", "function decimals() external view returns (uint8)", "function approve(address spender, uint256 amount) external returns (bool)"];
+
+export default function StakeToken() {
+    const [account, setAccount] = useState(null);
+    const [provider, setProvider] = useState(null);
+    const [contract, setContract] = useState(null);
+    const [tokenContract, setTokenContract] = useState(null);
+    const [stakedAmount, setStakedAmount] = useState("0");
+    const [pendingReward, setPendingReward] = useState("0");
+    const [balance, setBalance] = useState("0");
+    const [decimals, setDecimals] = useState(18);
+    const [amount, setAmount] = useState("");
+
+    useEffect(() => {
+        if (window.ethereum) {
+            const web3Provider = new ethers.BrowserProvider(window.ethereum);
+            setProvider(web3Provider);
+        }
+    }, []);
+
+    const connectWallet = async () => {
+        if (!provider) return;
+        const signer = await provider.getSigner();
+        const userAddress = await signer.getAddress();
+        setAccount(userAddress);
+        setContract(new ethers.Contract(contractAddress, abi, signer));
+        const token = new ethers.Contract(tokenAddress, tokenAbi, signer);
+        setTokenContract(token);
+        const userBalance = await token.balanceOf(userAddress);
+        const tokenDecimals = await token.decimals();
+        setDecimals(tokenDecimals);
+        setBalance(ethers.formatUnits(userBalance, tokenDecimals));
+    };
+
+    const fetchData = async () => {
+        if (!contract || !account) return;
+        const staked = await contract.getStakedAmount(account);
+        const reward = await contract.pendingReward(account);
+        setStakedAmount(ethers.formatUnits(staked, decimals));
+        setPendingReward(ethers.formatEther(reward));
+    };
+
+    const stakeTokens = async () => {
+        if (!contract || !tokenContract || !amount) return;
+        const parsedAmount = ethers.parseUnits(amount, decimals);
+        await tokenContract.approve(contractAddress, parsedAmount);
+        await contract.stake(parsedAmount);
+        fetchData();
+    };
+
+    const unstakeTokens = async () => {
+        if (!contract || !amount) return;
+        const parsedAmount = ethers.parseUnits(amount, decimals);
+        await contract.unstake(parsedAmount);
+        fetchData();
+    };
+
+    const claimReward = async () => {
+        if (!contract) return;
+        await contract.claimReward();
+        fetchData();
+    };
+
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-purple-900 text-white">
+            <h1 className="text-3xl font-bold">Stake Token ETH</h1>
+            {!account ? (
+                <Button className="mt-4 bg-purple-600" onClick={connectWallet}>
+                    Connect Wallet
+                </Button>
+            ) : (
+                <div className="mt-4">
+                    <p>Connected: {account}</p>
+                    <p>Staked: {stakedAmount} Tokens</p>
+                    <p>Pending Reward: {pendingReward} ETH</p>
+                    <p>Balance: {balance} Tokens</p>
+                    <input
+                        type="number"
+                        className="mt-2 p-2 text-black"
+                        placeholder="Enter amount"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                    />
+                    <Button className="mt-2 bg-purple-500" onClick={() => setAmount(balance)}>
+                        Max
+                    </Button>
+                    <div className="flex space-x-4 mt-4">
+                        <Button className="bg-purple-500" onClick={stakeTokens}>
+                            Stake
+                        </Button>
+                        <Button className="bg-purple-400" onClick={unstakeTokens}>
+                            Unstake
+                        </Button>
+                        <Button className="bg-purple-300" onClick={claimReward}>
+                            Claim Reward
+                        </Button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
