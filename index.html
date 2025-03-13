@@ -5,61 +5,111 @@
   <title>Staking & APR Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Using Roboto font for a modern look -->
+  <!-- Using Roboto for a modern look -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    /* Global Styles */
+    :root {
+      --primary-color: #9c27b0;
+      --primary-dark: #7b1fa2;
+      --secondary-color: #ab47bc;
+      --background-color: #f5f5f5;
+      --text-color: #333;
+    }
+    * {
+      box-sizing: border-box;
+    }
     body {
       margin: 0;
-      padding: 20px;
+      padding: 0;
       font-family: 'Roboto', sans-serif;
       background: linear-gradient(135deg, #ce93d8, #ab47bc);
-      color: #333;
+      color: var(--text-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
     }
-    
-    h1, h2, h3 {
-      color: #4a148c;
+    .container {
+      width: 95%;
+      max-width: 1200px;
+      margin: 20px auto;
     }
-    
-    /* Section styles */
-    .section {
-      background: #fff;
-      border: 2px solid #9c27b0;
-      border-radius: 10px;
-      padding: 15px 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      animation: fadeIn 1s ease-out both;
-    }
-    
-    /* Button styles */
-    button {
-      background-color: #9c27b0;
+    header {
+      text-align: center;
+      margin-bottom: 30px;
       color: #fff;
-      border: none;
-      border-radius: 5px;
-      padding: 8px 16px;
-      margin: 5px;
-      cursor: pointer;
-      transition: all 0.3s ease;
     }
-    
-    button:hover {
-      background-color: #7b1fa2;
+    header h1 {
+      font-size: 2.5rem;
+      margin: 0;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+    }
+    header button {
+      background: var(--primary-color);
+      border: none;
+      color: #fff;
+      padding: 10px 20px;
+      margin-top: 10px;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.3s ease;
+    }
+    header button:hover {
+      background: var(--primary-dark);
       transform: scale(1.05);
     }
-    
-    input[type="number"] {
-      padding: 8px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      width: 150px;
-      margin-right: 5px;
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      padding: 20px;
+      margin-bottom: 20px;
+      animation: fadeInUp 0.8s ease both;
     }
-    
-    /* FadeIn animation */
-    @keyframes fadeIn {
+    .card h2 {
+      margin-top: 0;
+      color: var(--primary-color);
+      border-bottom: 2px solid var(--primary-color);
+      padding-bottom: 5px;
+    }
+    .card p {
+      margin: 10px 0;
+      font-size: 1rem;
+    }
+    .card button {
+      background: var(--primary-color);
+      border: none;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.3s, transform 0.3s;
+      margin-top: 10px;
+    }
+    .card button:hover {
+      background: var(--primary-dark);
+      transform: scale(1.05);
+    }
+    .input-group {
+      display: flex;
+      align-items: center;
+      margin: 15px 0;
+    }
+    .input-group input {
+      flex: 1;
+      padding: 10px;
+      font-size: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      margin-right: 10px;
+    }
+    .input-group button {
+      padding: 10px 15px;
+    }
+    @keyframes fadeInUp {
       from {
         opacity: 0;
         transform: translateY(20px);
@@ -69,59 +119,60 @@
         transform: translateY(0);
       }
     }
-    
-    /* Dashboard button style */
-    #refreshDashboard {
-      font-weight: 500;
+    /* Responsive layout */
+    @media (min-width: 768px) {
+      .flex-row {
+        display: flex;
+        gap: 20px;
+      }
+      .flex-row .card {
+        flex: 1;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>Staking & APR Dashboard</h1>
-  <button id="connectWallet">Connect Wallet</button>
-  <div id="walletAddress"></div>
-  
-  <!-- Dashboard & APR Section (moved to the top) -->
-  <div class="section">
-    <h2>Dashboard & APR</h2>
-    <button id="refreshDashboard">Refresh Dashboard</button>
-    <div style="margin-top: 10px;">
+  <div class="container">
+    <header>
+      <h1>Staking & APR Dashboard</h1>
+      <button id="connectWallet">Connect Wallet</button>
+      <div id="walletAddress"></div>
+    </header>
+    
+    <!-- Dashboard & APR Section (top of page) -->
+    <div class="card">
+      <h2>Dashboard & APR</h2>
       <p>Price of Monapepe (in wETH): <span id="price">-</span></p>
       <p>Total Staked Value (in MON): <span id="totalValue">-</span></p>
       <p>APR: <span id="apr">-</span>%</p>
     </div>
-  </div>
-
-  <!-- Staking Interface Section -->
-  <div class="section">
-    <h2>Staking Interface</h2>
-    <div>
+    
+    <!-- Staking Interface Section -->
+    <div class="card">
+      <h2>Staking Interface</h2>
       <p>Token Balance: <span id="tokenBalance">0</span></p>
       <p>Your Staked Amount: <span id="userStaked">0</span></p>
       <p>Pending Reward: <span id="pendingReward">0</span></p>
-      <!-- Claim Reward placed directly below Pending Reward -->
       <button id="claimRewardButton">Claim Reward</button>
+      <div class="input-group">
+        <input type="number" id="stakeAmount" placeholder="Amount to stake">
+        <button id="maxStake">Max</button>
+        <button id="stakeButton">Stake</button>
+      </div>
+      <div class="input-group">
+        <input type="number" id="unstakeAmount" placeholder="Amount to unstake">
+        <button id="maxUnstake">Max</button>
+        <button id="unstakeButton">Unstake</button>
+      </div>
     </div>
-    <div>
-      <h3>Stake Tokens</h3>
-      <input type="number" id="stakeAmount" placeholder="Amount to stake">
-      <button id="maxStake">Max</button>
-      <button id="stakeButton">Stake</button>
-    </div>
-    <div>
-      <h3>Unstake Tokens</h3>
-      <input type="number" id="unstakeAmount" placeholder="Amount to unstake">
-      <button id="maxUnstake">Max</button>
-      <button id="unstakeButton">Unstake</button>
+    
+    <!-- Emergency Section -->
+    <div class="card">
+      <h2>Emergency Actions</h2>
+      <button id="emergencyWithdrawButton">Emergency Withdraw</button>
     </div>
   </div>
-
-  <!-- Emergency Section -->
-  <div class="section">
-    <h2>Emergency Actions</h2>
-    <button id="emergencyWithdrawButton">Emergency Withdraw</button>
-  </div>
-
+  
   <script>
     let provider, signer, userAddress;
     let tokenContract, stakingContract;
@@ -377,13 +428,15 @@
 
     // Event listeners
     document.getElementById("connectWallet").addEventListener("click", connectWallet);
-    document.getElementById("refreshDashboard").addEventListener("click", refreshDashboard);
     document.getElementById("stakeButton").addEventListener("click", stakeTokens);
     document.getElementById("unstakeButton").addEventListener("click", unstakeTokens);
     document.getElementById("maxStake").addEventListener("click", maxStake);
     document.getElementById("maxUnstake").addEventListener("click", maxUnstake);
     document.getElementById("claimRewardButton").addEventListener("click", claimReward);
     document.getElementById("emergencyWithdrawButton").addEventListener("click", emergencyWithdraw);
+    
+    // Auto-refresh the dashboard every 5 seconds
+    setInterval(refreshDashboard, 5000);
   </script>
 </body>
 </html>
