@@ -62,7 +62,7 @@
     <div id="statusMessage" class="status-message"></div>
 
     <h2>Dashboard</h2>
-    <p>Price of Monapepe (in wETH): <span id="price">-</span></p>
+    <p>Price of Monapepe (in MON): <span id="price">-</span></p>
     <p>Total Staked Value (in MON): <span id="totalValue">-</span></p>
     <p>APR: <span id="apr">-</span>%</p>
 
@@ -97,13 +97,7 @@
       "function approve(address spender, uint256 amount) external returns (bool)"
     ];
 
-    function showMessage(message, type) {
-      const msgBox = document.getElementById("statusMessage");
-      msgBox.textContent = message;
-      msgBox.className = `status-message ${type}`;
-      msgBox.style.display = "block";
-      setTimeout(() => { msgBox.style.display = "none"; }, 4000);
-    }
+    function showMessage(message, type) {}
 
     async function connectWallet() {
       if (!window.ethereum) {
