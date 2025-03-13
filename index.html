@@ -1,116 +1,177 @@
-import { useState, useEffect } from "react";
-import { ethers } from "ethers";
-import { Button } from "@/components/ui/button";
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>StakeTokenETH DApp</title>
+  <!-- Thư viện ethers.js -->
+  <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input, button { padding: 8px; margin: 5px 0; }
+    .section { margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <h1>StakeTokenETH DApp</h1>
+  <button id="connectWallet">Kết nối ví</button>
+  <div id="walletAddress"></div>
 
-const tokenAddress = "0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA";
-const contractAddress = "0x9a6F85f4090292eE248B2C999a3E1422B1297177";
-const abi = [
-    "function stake(uint256 amount) external",
-    "function unstake(uint256 amount) external",
-    "function claimReward() external",
-    "function getStakedAmount(address user) external view returns (uint256)",
-    "function pendingReward(address user) external view returns (uint256)",
-    "function contractBalance() external view returns (uint256)"
-];
-const tokenAbi = ["function balanceOf(address owner) external view returns (uint256)", "function decimals() external view returns (uint8)", "function approve(address spender, uint256 amount) external returns (bool)"];
+  <div class="section">
+    <h2>Thông tin hợp đồng</h2>
+    <button id="refreshData">Làm mới dữ liệu</button>
+    <p>Số lượng đã stake: <span id="stakedAmount">0</span></p>
+    <p>Phần thưởng đang chờ: <span id="pendingReward">0</span></p>
+    <p>Số dư hợp đồng: <span id="contractBalance">0</span></p>
+  </div>
 
-export default function StakeToken() {
-    const [account, setAccount] = useState(null);
-    const [provider, setProvider] = useState(null);
-    const [contract, setContract] = useState(null);
-    const [tokenContract, setTokenContract] = useState(null);
-    const [stakedAmount, setStakedAmount] = useState("0");
-    const [pendingReward, setPendingReward] = useState("0");
-    const [balance, setBalance] = useState("0");
-    const [decimals, setDecimals] = useState(18);
-    const [amount, setAmount] = useState("");
+  <div class="section">
+    <h2>Chức năng</h2>
+    <div>
+      <h3>Stake Token</h3>
+      <input type="number" id="stakeAmount" placeholder="Số lượng cần stake">
+      <button id="stakeButton">Stake</button>
+    </div>
+    <div>
+      <h3>Unstake Token</h3>
+      <input type="number" id="unstakeAmount" placeholder="Số lượng cần unstake">
+      <button id="unstakeButton">Unstake</button>
+    </div>
+    <div>
+      <h3>Claim Reward</h3>
+      <button id="claimRewardButton">Nhận thưởng</button>
+    </div>
+    <div>
+      <h3>Emergency Withdraw</h3>
+      <button id="emergencyWithdrawButton">Rút khẩn cấp</button>
+    </div>
+  </div>
 
-    useEffect(() => {
-        if (window.ethereum) {
-            const web3Provider = new ethers.BrowserProvider(window.ethereum);
-            setProvider(web3Provider);
+  <script>
+    let provider;
+    let signer;
+    let contract;
+    let userAddress;
+
+    // Thông tin hợp đồng
+    const contractAddress = "YOUR_CONTRACT_ADDRESS"; // Thay bằng địa chỉ hợp đồng của bạn
+    const abi = [
+      "function stake(uint256 amount) external",
+      "function unstake(uint256 amount) external",
+      "function claimReward() external",
+      "function emergencyWithdraw() external",
+      "function pendingReward(address user) external view returns (uint256)",
+      "function getStakedAmount(address user) external view returns (uint256)",
+      "function contractBalance() external view returns (uint256)"
+    ];
+
+    // Kết nối ví MetaMask
+    async function connectWallet() {
+      if (window.ethereum) {
+        try {
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+          provider = new ethers.providers.Web3Provider(window.ethereum);
+          signer = provider.getSigner();
+          userAddress = await signer.getAddress();
+          document.getElementById("walletAddress").innerText = "Đã kết nối: " + userAddress;
+          contract = new ethers.Contract(contractAddress, abi, signer);
+          refreshData();
+        } catch (error) {
+          console.error(error);
+          alert("Kết nối ví thất bại.");
         }
-    }, []);
+      } else {
+        alert("Vui lòng cài đặt MetaMask.");
+      }
+    }
 
-    const connectWallet = async () => {
-        if (!provider) return;
-        const signer = await provider.getSigner();
-        const userAddress = await signer.getAddress();
-        setAccount(userAddress);
-        setContract(new ethers.Contract(contractAddress, abi, signer));
-        const token = new ethers.Contract(tokenAddress, tokenAbi, signer);
-        setTokenContract(token);
-        const userBalance = await token.balanceOf(userAddress);
-        const tokenDecimals = await token.decimals();
-        setDecimals(tokenDecimals);
-        setBalance(ethers.formatUnits(userBalance, tokenDecimals));
-    };
+    // Lấy dữ liệu từ hợp đồng
+    async function refreshData() {
+      if (!contract || !userAddress) return;
+      try {
+        const staked = await contract.getStakedAmount(userAddress);
+        const pending = await contract.pendingReward(userAddress);
+        const balance = await contract.contractBalance();
+        document.getElementById("stakedAmount").innerText = ethers.utils.formatUnits(staked, 18);
+        document.getElementById("pendingReward").innerText = ethers.utils.formatEther(pending);
+        document.getElementById("contractBalance").innerText = ethers.utils.formatEther(balance);
+      } catch (error) {
+        console.error(error);
+        alert("Có lỗi khi lấy dữ liệu hợp đồng.");
+      }
+    }
 
-    const fetchData = async () => {
-        if (!contract || !account) return;
-        const staked = await contract.getStakedAmount(account);
-        const reward = await contract.pendingReward(account);
-        setStakedAmount(ethers.formatUnits(staked, decimals));
-        setPendingReward(ethers.formatEther(reward));
-    };
+    // Stake token
+    async function stakeTokens() {
+      const amount = document.getElementById("stakeAmount").value;
+      if (!amount || isNaN(amount)) {
+        alert("Vui lòng nhập số lượng hợp lệ.");
+        return;
+      }
+      try {
+        // Giả sử token có 18 chữ số thập phân
+        const stakeAmount = ethers.utils.parseUnits(amount, 18);
+        const tx = await contract.stake(stakeAmount);
+        await tx.wait();
+        alert("Stake thành công.");
+        refreshData();
+      } catch (error) {
+        console.error(error);
+        alert("Có lỗi khi stake token.");
+      }
+    }
 
-    const stakeTokens = async () => {
-        if (!contract || !tokenContract || !amount) return;
-        const parsedAmount = ethers.parseUnits(amount, decimals);
-        await tokenContract.approve(contractAddress, parsedAmount);
-        await contract.stake(parsedAmount);
-        fetchData();
-    };
+    // Unstake token
+    async function unstakeTokens() {
+      const amount = document.getElementById("unstakeAmount").value;
+      if (!amount || isNaN(amount)) {
+        alert("Vui lòng nhập số lượng hợp lệ.");
+        return;
+      }
+      try {
+        const unstakeAmount = ethers.utils.parseUnits(amount, 18);
+        const tx = await contract.unstake(unstakeAmount);
+        await tx.wait();
+        alert("Unstake thành công.");
+        refreshData();
+      } catch (error) {
+        console.error(error);
+        alert("Có lỗi khi unstake token.");
+      }
+    }
 
-    const unstakeTokens = async () => {
-        if (!contract || !amount) return;
-        const parsedAmount = ethers.parseUnits(amount, decimals);
-        await contract.unstake(parsedAmount);
-        fetchData();
-    };
+    // Claim reward
+    async function claimReward() {
+      try {
+        const tx = await contract.claimReward();
+        await tx.wait();
+        alert("Nhận thưởng thành công.");
+        refreshData();
+      } catch (error) {
+        console.error(error);
+        alert("Có lỗi khi nhận thưởng.");
+      }
+    }
 
-    const claimReward = async () => {
-        if (!contract) return;
-        await contract.claimReward();
-        fetchData();
-    };
+    // Emergency withdraw
+    async function emergencyWithdraw() {
+      try {
+        const tx = await contract.emergencyWithdraw();
+        await tx.wait();
+        alert("Rút khẩn cấp thành công.");
+        refreshData();
+      } catch (error) {
+        console.error(error);
+        alert("Có lỗi khi rút khẩn cấp.");
+      }
+    }
 
-    return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-purple-900 text-white">
-            <h1 className="text-3xl font-bold">Stake Token ETH</h1>
-            {!account ? (
-                <Button className="mt-4 bg-purple-600" onClick={connectWallet}>
-                    Connect Wallet
-                </Button>
-            ) : (
-                <div className="mt-4">
-                    <p>Connected: {account}</p>
-                    <p>Staked: {stakedAmount} Tokens</p>
-                    <p>Pending Reward: {pendingReward} ETH</p>
-                    <p>Balance: {balance} Tokens</p>
-                    <input
-                        type="number"
-                        className="mt-2 p-2 text-black"
-                        placeholder="Enter amount"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                    />
-                    <Button className="mt-2 bg-purple-500" onClick={() => setAmount(balance)}>
-                        Max
-                    </Button>
-                    <div className="flex space-x-4 mt-4">
-                        <Button className="bg-purple-500" onClick={stakeTokens}>
-                            Stake
-                        </Button>
-                        <Button className="bg-purple-400" onClick={unstakeTokens}>
-                            Unstake
-                        </Button>
-                        <Button className="bg-purple-300" onClick={claimReward}>
-                            Claim Reward
-                        </Button>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
+    // Sự kiện click cho các nút
+    document.getElementById("connectWallet").addEventListener("click", connectWallet);
+    document.getElementById("refreshData").addEventListener("click", refreshData);
+    document.getElementById("stakeButton").addEventListener("click", stakeTokens);
+    document.getElementById("unstakeButton").addEventListener("click", unstakeTokens);
+    document.getElementById("claimRewardButton").addEventListener("click", claimReward);
+    document.getElementById("emergencyWithdrawButton").addEventListener("click", emergencyWithdraw);
+  </script>
+</body>
+</html>
