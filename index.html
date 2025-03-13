@@ -223,11 +223,9 @@
               console.log("Monad Testnet added and switched");
             } catch (addError) {
               console.error("Error adding network:", addError);
-              alert("Please add the Monad Testnet network manually using the provided RPC.");
             }
           } else {
             console.error("Error switching network:", switchError);
-            alert("Please switch to the Monad Testnet network.");
           }
         }
       }
@@ -236,7 +234,6 @@
     // Connect wallet and instantiate contracts
     async function connectWallet() {
       if (!window.ethereum) {
-        alert("Please install MetaMask.");
         return;
       }
       try {
@@ -254,7 +251,6 @@
         refreshDashboard();
       } catch (error) {
         console.error(error);
-        alert("Wallet connection failed.");
       }
     }
 
@@ -275,14 +271,12 @@
         document.getElementById("pendingReward").innerText = pending.toFixed(6);
       } catch (error) {
         console.error(error);
-        alert("Error refreshing staking data.");
       }
     }
 
     // APR Calculator: uses Uniswap pool data and staking contract total staked amount
     async function calculateAPR() {
       if (!provider) {
-        alert("Please connect your wallet first.");
         return;
       }
       try {
@@ -299,7 +293,6 @@
           reserveWETH = reserves.reserve1;
           reserveMonapepe = reserves.reserve0;
         } else {
-          alert("Pool does not contain the expected tokens.");
           return;
         }
         const rWETH = parseFloat(ethers.utils.formatEther(reserveWETH));
@@ -324,7 +317,6 @@
         document.getElementById("apr").innerText = apr.toFixed(2);
       } catch (error) {
         console.error(error);
-        alert("Error calculating APR.");
       }
     }
 
