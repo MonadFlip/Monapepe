@@ -5,20 +5,17 @@
   <title>Staking & APR Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Using Roboto for a modern look -->
+  <!-- Sử dụng font Roboto cho giao diện hiện đại -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     :root {
       --primary-color: #9c27b0;
       --primary-dark: #7b1fa2;
-      --secondary-color: #ab47bc;
       --background-color: #f5f5f5;
       --text-color: #333;
     }
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       padding: 0;
@@ -63,7 +60,7 @@
     .card {
       background: #fff;
       border-radius: 10px;
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
       padding: 20px;
       margin-bottom: 20px;
       animation: fadeInUp 0.8s ease both;
@@ -110,42 +107,28 @@
       padding: 10px 15px;
     }
     @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     /* Responsive layout */
     @media (min-width: 768px) {
-      .flex-row {
-        display: flex;
-        gap: 20px;
-      }
-      .flex-row .card {
-        flex: 1;
-      }
+      .flex-row { display: flex; gap: 20px; }
+      .flex-row .card { flex: 1; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    
-    <!-- Dashboard & APR Section (top of page) -->
-    <div class="card">
+    <!-- Dashboard & APR Section (luôn hiển thị, không cần kết nối ví) -->
+    <div class="card" id="publicDashboard">
       <h2>Dashboard & APR</h2>
-      <button id="connectWallet">Connect Wallet</button>
-      <div id="walletAddress"></div>
       <p>Price of Monapepe (in MON): <span id="price">-</span></p>
       <p>Total Staked Value (in MON): <span id="totalValue">-</span></p>
       <p>APR: <span id="apr">-</span>%</p>
     </div>
     
-    <!-- Staking Interface Section -->
-    <div class="card">
+    <!-- Staking Interface Section (chỉ hiển thị khi ví được kết nối) -->
+    <div class="card" id="walletDashboard" style="display:none;">
       <h2>Staking Interface</h2>
       <p>Token Balance: <span id="tokenBalance">0</span></p>
       <p>Your Staked Amount: <span id="userStaked">0</span></p>
@@ -162,129 +145,59 @@
         <button id="unstakeButton">Unstake</button>
       </div>
     </div>
+    
+    <!-- Kết nối ví -->
+    <header>
+      <button id="connectWallet">Connect Wallet</button>
+      <div id="walletAddress"></div>
+    </header>
   </div>
   
   <script>
+    // Cấu hình RPC (Monad Testnet)
+    const rpcUrl = "https://testnet-rpc.monad.xyz";
+    const chainId = 10143;
+    // Read-only provider dùng để lấy dữ liệu public (Dashboard & APR)
+    const readonlyProvider = new ethers.providers.JsonRpcProvider(rpcUrl, chainId);
+    
+    // Các biến toàn cục cho wallet (sẽ được khởi tạo khi ví kết nối)
     let provider, signer, userAddress;
     let tokenContract, stakingContract;
     
-    // Addresses
+    // Địa chỉ hợp đồng
     const poolAddress      = "0x4a0A2B293A34c54d0965D23f8131A3D2c0b91290";  // Uniswap V2 pool
     const wETHAddress      = "0x3bb9AFB94c82752E47706A10779EA525Cf95dc27";  // wETH token
     const monapepeAddress  = "0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA";  // Monapepe token
     const stakingAddress   = "0x9a6F85f4090292eE248B2C999a3E1422B1297177";  // Staking contract
 
-    // ABIs
+    // ABIs (các ABI tối thiểu)
     const poolABI = [
       "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
       "function token0() external view returns (address)",
       "function token1() external view returns (address)"
     ];
-
     const stakingABI = [
       "function stake(uint256 amount) external",
       "function unstake(uint256 amount) external",
       "function claimReward() external",
-      "function emergencyWithdraw() external",
       "function pendingReward(address user) external view returns (uint256)",
       "function getStakedAmount(address user) external view returns (uint256)",
       "function totalStaked() external view returns (uint256)"
     ];
-
     const tokenABI = [
       "function balanceOf(address owner) external view returns (uint256)",
       "function approve(address spender, uint256 amount) external returns (bool)",
       "function allowance(address owner, address spender) external view returns (uint256)"
     ];
-
-    // Check network (Monad Testnet: chainId 0x279f = 10143)
-    async function checkNetwork() {
-      if (!window.ethereum) return;
-      const chainId = await window.ethereum.request({ method: "eth_chainId" });
-      if (chainId !== "0x279f") {
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x279f" }],
-          });
-          console.log("Switched to Monad Testnet");
-        } catch (switchError) {
-          if (switchError.code === 4902) {
-            try {
-              await window.ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [{
-                  chainId: "0x279f",
-                  chainName: "Monad Testnet",
-                  nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-                  rpcUrls: ["https://10143.rpc.thirdweb.com"],
-                }],
-              });
-              console.log("Monad Testnet added and switched");
-            } catch (addError) {
-              console.error("Error adding network:", addError);
-            }
-          } else {
-            console.error("Error switching network:", switchError);
-          }
-        }
-      }
-    }
-
-    // Connect wallet and instantiate contracts
-    async function connectWallet() {
-      if (!window.ethereum) {
-        return;
-      }
+    
+    // Hàm refresh Dashboard & APR (sử dụng read-only provider)
+    async function refreshPublicDashboard() {
       try {
-        await checkNetwork();
-        await window.ethereum.request({ method: "eth_requestAccounts" });
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        provider.ens = null;
-        signer = provider.getSigner();
-        userAddress = await signer.getAddress();
-        document.getElementById("walletAddress").innerText = "Connected: " + userAddress;
-        
-        tokenContract = new ethers.Contract(monapepeAddress, tokenABI, signer);
-        stakingContract = new ethers.Contract(stakingAddress, stakingABI, signer);
-        
-        refreshDashboard();
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    // Refresh data for staking interface
-    async function refreshData() {
-      if (!tokenContract || !stakingContract || !userAddress) return;
-      try {
-        const tokenBalBN = await tokenContract.balanceOf(userAddress);
-        const tokenBal = parseFloat(ethers.utils.formatEther(tokenBalBN));
-        document.getElementById("tokenBalance").innerText = tokenBal.toFixed(6);
-        
-        const userStakedBN = await stakingContract.getStakedAmount(userAddress);
-        const userStaked = parseFloat(ethers.utils.formatEther(userStakedBN));
-        document.getElementById("userStaked").innerText = userStaked.toFixed(6);
-        
-        const pendingBN = await stakingContract.pendingReward(userAddress);
-        const pending = parseFloat(ethers.utils.formatEther(pendingBN));
-        document.getElementById("pendingReward").innerText = pending.toFixed(6);
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    // APR Calculator: uses Uniswap pool data and staking contract total staked amount
-    async function calculateAPR() {
-      if (!provider) {
-        return;
-      }
-      try {
-        const poolContract = new ethers.Contract(poolAddress, poolABI, provider);
+        // Lấy dữ liệu từ pool Uniswap
+        const poolContract = new ethers.Contract(poolAddress, poolABI, readonlyProvider);
         const reserves = await poolContract.getReserves();
         const token0 = await poolContract.token0();
         const token1 = await poolContract.token1();
-        
         let reserveWETH, reserveMonapepe;
         if (token0.toLowerCase() === wETHAddress.toLowerCase() && token1.toLowerCase() === monapepeAddress.toLowerCase()) {
           reserveWETH = reserves.reserve0;
@@ -293,43 +206,64 @@
           reserveWETH = reserves.reserve1;
           reserveMonapepe = reserves.reserve0;
         } else {
+          console.error("Pool does not contain the expected tokens.");
           return;
         }
+        // Chuyển đổi reserves (giả sử 18 decimals)
         const rWETH = parseFloat(ethers.utils.formatEther(reserveWETH));
         const rMonapepe = parseFloat(ethers.utils.formatEther(reserveMonapepe));
-        
-        // Price of one Monapepe in wETH
+        // Giá của Monapepe = R_wETH / R_Monapepe (đơn vị MON)
         const price = rWETH / rMonapepe;
-        document.getElementById("price").innerText = price.toFixed(6);
+        document.getElementById("price").innerText = price;
         
-        // Fetch total staked amount from the staking contract
-        const totalStakedBN = await stakingContract.totalStaked();
+        // Lấy dữ liệu tổng số Monapepe staked từ hợp đồng staking
+        const stakingContractRO = new ethers.Contract(stakingAddress, stakingABI, readonlyProvider);
+        const totalStakedBN = await stakingContractRO.totalStaked();
         const totalStaked = parseFloat(ethers.utils.formatEther(totalStakedBN));
-        // Total staked value (assuming 1 MON = 1 wETH)
-        const totalValue = totalStaked * price;
-        document.getElementById("totalValue").innerText = totalValue.toFixed(6);
+        document.getElementById("totalValue").innerText = (totalStaked * price).toFixed(6);
         
-        // Annual reward is 8765 MON; APR = (annualReward / totalValue) * 100%
+        // Tính APR: (annualReward / totalValue) * 100, với annualReward = 8765 MON
         let apr = 0;
+        const totalValue = totalStaked * price;
         if (totalValue > 0) {
           apr = (8765 / totalValue) * 100;
         }
         document.getElementById("apr").innerText = apr.toFixed(2);
       } catch (error) {
-        console.error(error);
+        console.error("Error in public dashboard:", error);
       }
     }
-
-    // Combined function to refresh all dashboard data
-    async function refreshDashboard() {
-      await refreshData();
-      await calculateAPR();
+    
+    // Hàm refresh thông tin ví (chỉ chạy khi ví đã được kết nối)
+    async function refreshWalletDashboard() {
+      if (!tokenContract || !stakingContract || !userAddress) return;
+      try {
+        const tokenBalBN = await tokenContract.balanceOf(userAddress);
+        document.getElementById("tokenBalance").innerText = ethers.utils.formatEther(tokenBalBN);
+        
+        const userStakedBN = await stakingContract.getStakedAmount(userAddress);
+        document.getElementById("userStaked").innerText = ethers.utils.formatEther(userStakedBN);
+        
+        const pendingBN = await stakingContract.pendingReward(userAddress);
+        document.getElementById("pendingReward").innerText = ethers.utils.formatEther(pendingBN);
+      } catch (error) {
+        console.error("Error in wallet dashboard:", error);
+      }
     }
-
-    // Stake tokens
+    
+    // Hàm kết hợp refresh toàn bộ dashboard
+    async function refreshDashboard() {
+      await refreshPublicDashboard();
+      await refreshWalletDashboard();
+    }
+    
+    // Các hàm giao dịch (stake, unstake, claim reward)
     async function stakeTokens() {
       const amount = document.getElementById("stakeAmount").value;
-      if (!amount || isNaN(amount)) return alert("Enter a valid amount.");
+      if (!amount || isNaN(amount)) {
+        console.error("Enter a valid amount.");
+        return;
+      }
       try {
         const parsedAmount = ethers.utils.parseEther(amount);
         const allowance = await tokenContract.allowance(userAddress, stakingAddress);
@@ -339,64 +273,86 @@
         }
         const tx = await stakingContract.stake(parsedAmount);
         await tx.wait();
-        alert("Stake successful.");
+        console.log("Stake successful.");
         refreshDashboard();
       } catch (error) {
-        console.error(error);
-        alert("Error staking tokens.");
+        console.error("Error staking tokens:", error);
       }
     }
-
-    // Unstake tokens
+    
     async function unstakeTokens() {
       const amount = document.getElementById("unstakeAmount").value;
-      if (!amount || isNaN(amount)) return alert("Enter a valid amount.");
+      if (!amount || isNaN(amount)) {
+        console.error("Enter a valid amount.");
+        return;
+      }
       try {
         const tx = await stakingContract.unstake(ethers.utils.parseEther(amount));
         await tx.wait();
-        alert("Unstake successful.");
+        console.log("Unstake successful.");
         refreshDashboard();
       } catch (error) {
-        console.error(error);
-        alert("Error unstaking tokens.");
+        console.error("Error unstaking tokens:", error);
       }
     }
-
-    // "Max" button functions
+    
+    async function claimReward() {
+      try {
+        const tx = await stakingContract.claimReward();
+        await tx.wait();
+        console.log("Reward claimed successfully.");
+        refreshDashboard();
+      } catch (error) {
+        console.error("Error claiming reward:", error);
+      }
+    }
+    
+    // Hàm "Max" cho stake/unstake
     async function maxStake() {
       try {
         const tokenBalBN = await tokenContract.balanceOf(userAddress);
         document.getElementById("stakeAmount").value = ethers.utils.formatEther(tokenBalBN);
       } catch (error) {
-        console.error(error);
-        alert("Error fetching max stake.");
+        console.error("Error fetching max stake:", error);
       }
     }
-
+    
     async function maxUnstake() {
       try {
         const userStakedBN = await stakingContract.getStakedAmount(userAddress);
         document.getElementById("unstakeAmount").value = ethers.utils.formatEther(userStakedBN);
       } catch (error) {
-        console.error(error);
-        alert("Error fetching max unstake.");
+        console.error("Error fetching max unstake:", error);
       }
     }
-
-    // Claim reward
-    async function claimReward() {
+    
+    // Hàm kết nối ví (khi người dùng bấm nút Connect Wallet)
+    async function connectWallet() {
+      if (!window.ethereum) {
+        console.error("MetaMask not installed.");
+        return;
+      }
       try {
-        const tx = await stakingContract.claimReward();
-        await tx.wait();
-        alert("Reward claimed successfully.");
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        provider.ens = null;
+        signer = provider.getSigner();
+        userAddress = await signer.getAddress();
+        document.getElementById("walletAddress").innerText = "Connected: " + userAddress;
+        
+        // Khởi tạo contract với signer cho các chức năng giao dịch
+        tokenContract = new ethers.Contract(monapepeAddress, tokenABI, signer);
+        stakingContract = new ethers.Contract(stakingAddress, stakingABI, signer);
+        
+        // Hiển thị thông tin ví (các mục này chỉ hiển thị khi kết nối ví)
+        document.getElementById("walletDashboard").style.display = "block";
         refreshDashboard();
       } catch (error) {
-        console.error(error);
-        alert("Error claiming reward.");
+        console.error("Error connecting wallet:", error);
       }
     }
-
-    // Event listeners
+    
+    // Gán sự kiện cho các nút
     document.getElementById("connectWallet").addEventListener("click", connectWallet);
     document.getElementById("stakeButton").addEventListener("click", stakeTokens);
     document.getElementById("unstakeButton").addEventListener("click", unstakeTokens);
@@ -404,8 +360,11 @@
     document.getElementById("maxUnstake").addEventListener("click", maxUnstake);
     document.getElementById("claimRewardButton").addEventListener("click", claimReward);
     
-    // Auto-refresh the dashboard every 5 seconds
+    // Auto-refresh toàn bộ dashboard mỗi 5 giây
     setInterval(refreshDashboard, 5000);
+    
+    // Cũng tự động refresh phần dashboard công khai ngay cả khi ví chưa kết nối
+    refreshPublicDashboard();
   </script>
 </body>
 </html>
