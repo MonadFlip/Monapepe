@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Staking & APR Dashboard</title>
+  <title>Staking Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Using Roboto for a modern look -->
@@ -166,13 +166,13 @@
   <div class="container">
     <!-- Header with title and connect wallet button -->
     <header>
-      <h1>Staking & APR Dashboard</h1>
+      <h1>Staking Dashboard</h1>
       <button id="connectWallet">Connect Wallet</button>
-      <!-- Wallet address will display with "Connected: " prefix -->
+      <!-- Display wallet address with prefix -->
       <div id="walletAddress"></div>
     </header>
     
-    <!-- Public Dashboard: always visible; updates every 15 seconds using cache -->
+    <!-- Public Dashboard: always visible and auto-refreshes every 5 seconds -->
     <div class="card" id="publicDashboard">
       <h2>Dashboard</h2>
       <p>Price (in MON): <span id="price">-</span></p>
@@ -222,10 +222,10 @@
     let tokenContract, stakingContract;
     
     // Contract addresses
-    const poolAddress      = "0x4a0A2B293A34c54d0965D23f8131A3D2c0b91290"; // Uniswap V2 pool
-    const wETHAddress      = "0x3bb9AFB94c82752E47706A10779EA525Cf95dc27"; // wETH token
-    const monapepeAddress  = "0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA"; // Monapepe token
-    const stakingAddress   = "0x9a6F85f4090292eE248B2C999a3E1422B1297177"; // Staking contract
+    const poolAddress      = "0x4a0A2B293A34c54d0965D23f8131A3D2c0b91290";  // Uniswap V2 pool
+    const wETHAddress      = "0x3bb9AFB94c82752E47706A10779EA525Cf95dc27";  // wETH token
+    const monapepeAddress  = "0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA";  // Monapepe token
+    const stakingAddress   = "0x9a6F85f4090292eE248B2C999a3E1422B1297177";  // Staking contract
     
     // Minimal ABIs for required contracts
     const poolABI = [
@@ -247,20 +247,8 @@
       "function allowance(address owner, address spender) external view returns (uint256)"
     ];
     
-    // Cache for public dashboard data
-    let publicCache = { timestamp: 0, data: {} };
-    const PUBLIC_CACHE_INTERVAL = 15000; // 15 seconds
-    
-    // Refresh public dashboard data (Price, TVL, APR) with caching
+    // Refresh public dashboard data (Price, TVL, APR)
     async function refreshPublicDashboard() {
-      const now = Date.now();
-      // Use cache if less than PUBLIC_CACHE_INTERVAL old
-      if (now - publicCache.timestamp < PUBLIC_CACHE_INTERVAL && publicCache.data.price !== undefined) {
-        document.getElementById("price").innerText = publicCache.data.price;
-        document.getElementById("totalValue").innerText = publicCache.data.totalValue;
-        document.getElementById("apr").innerText = publicCache.data.apr;
-        return;
-      }
       try {
         const poolContract = new ethers.Contract(poolAddress, poolABI, readonlyProvider);
         const reserves = await poolContract.getReserves();
@@ -277,40 +265,26 @@
           console.error("Pool does not contain the expected tokens.");
           return;
         }
+        // Convert reserves assuming 18 decimals
         const rWETH = parseFloat(ethers.utils.formatEther(reserveWETH));
         const rMonapepe = parseFloat(ethers.utils.formatEther(reserveMonapepe));
+        // Calculate price of Monapepe in MON (1 MON assumed = 1 wETH unit)
         const price = rWETH / rMonapepe;
-        // Update UI without rounding price
         document.getElementById("price").innerText = price;
         
         const stakingContractRO = new ethers.Contract(stakingAddress, stakingABI, readonlyProvider);
         const totalStakedBN = await stakingContractRO.totalStaked();
         const totalStaked = parseFloat(ethers.utils.formatEther(totalStakedBN));
-        const tvl = (totalStaked * price).toFixed(6);
-        document.getElementById("totalValue").innerText = tvl;
+        document.getElementById("totalValue").innerText = (totalStaked * price).toFixed(6);
         
         const totalValue = totalStaked * price;
         let apr = 0;
         if (totalValue > 0) {
           apr = (8765 / totalValue) * 100;
         }
-        const aprStr = apr.toFixed(2);
-        document.getElementById("apr").innerText = aprStr;
-        
-        // Cache the data
-        publicCache = {
-          timestamp: Date.now(),
-          data: {
-            price: price,
-            totalValue: tvl,
-            apr: aprStr
-          }
-        };
+        document.getElementById("apr").innerText = apr.toFixed(2);
       } catch (error) {
         console.error("Error in public dashboard:", error);
-        document.getElementById("price").innerText = "Error";
-        document.getElementById("totalValue").innerText = "Error";
-        document.getElementById("apr").innerText = "Error";
       }
     }
     
@@ -443,8 +417,8 @@
     document.getElementById("maxUnstake").addEventListener("click", maxUnstake);
     document.getElementById("claimRewardButton").addEventListener("click", claimReward);
     
-    // Auto-refresh the dashboard every 10 seconds
-    setInterval(refreshDashboard, 10000);
+    // Auto-refresh the entire dashboard every 5 seconds
+    setInterval(refreshDashboard, 5000);
     // Immediately refresh public dashboard on load
     refreshPublicDashboard();
   </script>
