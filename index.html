@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Staking Dashboard</title>
+  <title>Staking & APR Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Using Roboto for a modern look -->
@@ -166,13 +166,13 @@
   <div class="container">
     <!-- Header with title and connect wallet button -->
     <header>
-      <h1>Staking Dashboard</h1>
+      <h1>Staking & APR Dashboard</h1>
       <button id="connectWallet">Connect Wallet</button>
       <!-- Display wallet address with prefix -->
       <div id="walletAddress"></div>
     </header>
     
-    <!-- Public Dashboard: always visible and auto-refreshes every 5 seconds -->
+    <!-- Public Dashboard: always visible and auto-refreshes using cache -->
     <div class="card" id="publicDashboard">
       <h2>Dashboard</h2>
       <p>Price (in MON): <span id="price">-</span></p>
@@ -247,8 +247,20 @@
       "function allowance(address owner, address spender) external view returns (uint256)"
     ];
     
-    // Refresh public dashboard data (Price, TVL, APR)
+    // Cache object for public dashboard data
+    let publicCache = { timestamp: 0, data: {} };
+    const CACHE_INTERVAL = 15000; // Cache public data for 15 seconds
+    
+    // Refresh public dashboard data (Price, TVL, APR) with caching
     async function refreshPublicDashboard() {
+      const now = Date.now();
+      if (now - publicCache.timestamp < CACHE_INTERVAL && publicCache.data.price !== undefined) {
+        // Use cached data
+        document.getElementById("price").innerText = publicCache.data.price;
+        document.getElementById("totalValue").innerText = publicCache.data.totalValue;
+        document.getElementById("apr").innerText = publicCache.data.apr;
+        return;
+      }
       try {
         const poolContract = new ethers.Contract(poolAddress, poolABI, readonlyProvider);
         const reserves = await poolContract.getReserves();
@@ -268,23 +280,31 @@
         // Convert reserves assuming 18 decimals
         const rWETH = parseFloat(ethers.utils.formatEther(reserveWETH));
         const rMonapepe = parseFloat(ethers.utils.formatEther(reserveMonapepe));
-        // Calculate price of Monapepe in MON (1 MON assumed = 1 wETH unit)
         const price = rWETH / rMonapepe;
         document.getElementById("price").innerText = price;
         
         const stakingContractRO = new ethers.Contract(stakingAddress, stakingABI, readonlyProvider);
         const totalStakedBN = await stakingContractRO.totalStaked();
         const totalStaked = parseFloat(ethers.utils.formatEther(totalStakedBN));
-        document.getElementById("totalValue").innerText = (totalStaked * price).toFixed(6);
+        const tvl = (totalStaked * price).toFixed(6);
+        document.getElementById("totalValue").innerText = tvl;
         
         const totalValue = totalStaked * price;
         let apr = 0;
         if (totalValue > 0) {
           apr = (8765 / totalValue) * 100;
         }
-        document.getElementById("apr").innerText = apr.toFixed(2);
+        const aprStr = apr.toFixed(2);
+        document.getElementById("apr").innerText = aprStr;
+        
+        // Update cache
+        publicCache.timestamp = Date.now();
+        publicCache.data = { price, totalValue: tvl, apr: aprStr };
       } catch (error) {
         console.error("Error in public dashboard:", error);
+        document.getElementById("price").innerText = "Error";
+        document.getElementById("totalValue").innerText = "Error";
+        document.getElementById("apr").innerText = "Error";
       }
     }
     
@@ -417,8 +437,7 @@
     document.getElementById("maxUnstake").addEventListener("click", maxUnstake);
     document.getElementById("claimRewardButton").addEventListener("click", claimReward);
     
-    // Auto-refresh the entire dashboard every 5 seconds
-    setInterval(refreshDashboard, 5000);
+    setInterval(refreshDashboard, 8888);
     // Immediately refresh public dashboard on load
     refreshPublicDashboard();
   </script>
