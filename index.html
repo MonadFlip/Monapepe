@@ -172,7 +172,7 @@
       <div id="walletAddress"></div>
     </header>
     
-    <!-- Public Dashboard: always visible and auto-refreshes using cache -->
+    <!-- Public Dashboard: updates every 30 seconds -->
     <div class="card" id="publicDashboard">
       <h2>Dashboard</h2>
       <p>Price (in MON): <span id="price">-</span></p>
@@ -180,7 +180,7 @@
       <p>APR: <span id="apr">-</span>% / YEAR</p>
     </div>
     
-    <!-- Wallet Dashboard: only visible after wallet connection -->
+    <!-- Wallet Dashboard: visible after wallet connection; auto-refreshes every 15 seconds -->
     <div class="card" id="walletDashboard" style="display: none;">
       <h2>Staking Interface</h2>
       <p>Token Balance: <span id="tokenBalance">0</span></p>
@@ -247,20 +247,8 @@
       "function allowance(address owner, address spender) external view returns (uint256)"
     ];
     
-    // Cache object for public dashboard data
-    let publicCache = { timestamp: 0, data: {} };
-    const CACHE_INTERVAL = 15000; // Cache public data for 15 seconds
-    
-    // Refresh public dashboard data (Price, TVL, APR) with caching
+    // Refresh public dashboard data (Price, TVL, APR) every 30 seconds
     async function refreshPublicDashboard() {
-      const now = Date.now();
-      if (now - publicCache.timestamp < CACHE_INTERVAL && publicCache.data.price !== undefined) {
-        // Use cached data
-        document.getElementById("price").innerText = publicCache.data.price;
-        document.getElementById("totalValue").innerText = publicCache.data.totalValue;
-        document.getElementById("apr").innerText = publicCache.data.apr;
-        return;
-      }
       try {
         const poolContract = new ethers.Contract(poolAddress, poolABI, readonlyProvider);
         const reserves = await poolContract.getReserves();
@@ -286,20 +274,14 @@
         const stakingContractRO = new ethers.Contract(stakingAddress, stakingABI, readonlyProvider);
         const totalStakedBN = await stakingContractRO.totalStaked();
         const totalStaked = parseFloat(ethers.utils.formatEther(totalStakedBN));
-        const tvl = (totalStaked * price).toFixed(6);
-        document.getElementById("totalValue").innerText = tvl;
+        document.getElementById("totalValue").innerText = (totalStaked * price).toFixed(6);
         
         const totalValue = totalStaked * price;
         let apr = 0;
         if (totalValue > 0) {
           apr = (8765 / totalValue) * 100;
         }
-        const aprStr = apr.toFixed(2);
-        document.getElementById("apr").innerText = aprStr;
-        
-        // Update cache
-        publicCache.timestamp = Date.now();
-        publicCache.data = { price, totalValue: tvl, apr: aprStr };
+        document.getElementById("apr").innerText = apr.toFixed(2);
       } catch (error) {
         console.error("Error in public dashboard:", error);
         document.getElementById("price").innerText = "Error";
@@ -308,7 +290,7 @@
       }
     }
     
-    // Refresh wallet dashboard data (Token Balance, Staked Amount, Pending Reward)
+    // Refresh wallet dashboard data (Token Balance, Staked Amount, Pending Reward) every 15 seconds
     async function refreshWalletDashboard() {
       if (!tokenContract || !stakingContract || !userAddress) return;
       try {
@@ -325,13 +307,9 @@
       }
     }
     
-    // Combined function to refresh all dashboard data
-    async function refreshDashboard() {
-      await refreshPublicDashboard();
-      await refreshWalletDashboard();
-    }
+    // Combined function is removed – now separate intervals will update each section
     
-    // Stake tokens function
+    // Stake tokens function – manual update triggers wallet dashboard refresh
     async function stakeTokens() {
       const amount = document.getElementById("stakeAmount").value;
       if (!amount || isNaN(amount)) {
@@ -348,13 +326,13 @@
         const tx = await stakingContract.stake(parsedAmount);
         await tx.wait();
         console.log("Stake successful.");
-        refreshDashboard();
+        refreshWalletDashboard();
       } catch (error) {
         console.error("Error staking tokens:", error);
       }
     }
     
-    // Unstake tokens function
+    // Unstake tokens function – manual update triggers wallet dashboard refresh
     async function unstakeTokens() {
       const amount = document.getElementById("unstakeAmount").value;
       if (!amount || isNaN(amount)) {
@@ -365,19 +343,19 @@
         const tx = await stakingContract.unstake(ethers.utils.parseEther(amount));
         await tx.wait();
         console.log("Unstake successful.");
-        refreshDashboard();
+        refreshWalletDashboard();
       } catch (error) {
         console.error("Error unstaking tokens:", error);
       }
     }
     
-    // Claim reward function
+    // Claim reward function – manual update triggers wallet dashboard refresh
     async function claimReward() {
       try {
         const tx = await stakingContract.claimReward();
         await tx.wait();
         console.log("Reward claimed successfully.");
-        refreshDashboard();
+        refreshWalletDashboard();
       } catch (error) {
         console.error("Error claiming reward:", error);
       }
@@ -421,9 +399,9 @@
         tokenContract = new ethers.Contract(monapepeAddress, tokenABI, signer);
         stakingContract = new ethers.Contract(stakingAddress, stakingABI, signer);
         
-        // Show wallet dashboard and refresh data
+        // Show wallet dashboard and refresh its data immediately
         document.getElementById("walletDashboard").style.display = "block";
-        refreshDashboard();
+        refreshWalletDashboard();
       } catch (error) {
         console.error("Error connecting wallet:", error);
       }
@@ -437,7 +415,11 @@
     document.getElementById("maxUnstake").addEventListener("click", maxUnstake);
     document.getElementById("claimRewardButton").addEventListener("click", claimReward);
     
-    setInterval(refreshDashboard, 8888);
+    // Auto-refresh intervals:
+    // Public Dashboard: every 30 seconds
+    setInterval(refreshPublicDashboard, 30000);
+    // Wallet Dashboard (if wallet is connected): every 15 seconds
+    setInterval(refreshWalletDashboard, 15000);
     // Immediately refresh public dashboard on load
     refreshPublicDashboard();
   </script>
