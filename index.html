@@ -172,7 +172,7 @@
       <div id="walletAddress"></div>
     </header>
     
-    <!-- Public Dashboard: always visible and auto-refreshes every 5 seconds -->
+    <!-- Public Dashboard: always visible and auto-refreshes every 10 seconds -->
     <div class="card" id="publicDashboard">
       <h2>Dashboard</h2>
       <p>Price (in MON): <span id="price">-</span></p>
@@ -211,10 +211,10 @@
   </div>
   
   <script>
-    // --- RPC configuration for Monad Testnet ---
+    // RPC configuration for Monad Testnet
     const rpcUrl = "https://testnet-rpc.monad.xyz";
     const chainId = 10143;
-    // Read-only provider for public dashboard data
+    // Use a read-only provider for public dashboard data
     const readonlyProvider = new ethers.providers.JsonRpcProvider(rpcUrl, chainId);
     
     // Global variables for wallet-connected functionality
@@ -247,6 +247,9 @@
       "function allowance(address owner, address spender) external view returns (uint256)"
     ];
     
+    // Global lock to prevent overlapping refresh calls
+    let refreshing = false;
+    
     // Refresh public dashboard data (Price, TVL, APR)
     async function refreshPublicDashboard() {
       try {
@@ -265,12 +268,10 @@
           console.error("Pool does not contain the expected tokens.");
           return;
         }
-        // Convert reserves assuming 18 decimals
         const rWETH = parseFloat(ethers.utils.formatEther(reserveWETH));
         const rMonapepe = parseFloat(ethers.utils.formatEther(reserveMonapepe));
-        // Calculate price of Monapepe in MON (1 MON assumed = 1 wETH unit)
         const price = rWETH / rMonapepe;
-        document.getElementById("price").innerText = price;
+        document.getElementById("price").innerText = price; // No rounding
         
         const stakingContractRO = new ethers.Contract(stakingAddress, stakingABI, readonlyProvider);
         const totalStakedBN = await stakingContractRO.totalStaked();
@@ -285,6 +286,10 @@
         document.getElementById("apr").innerText = apr.toFixed(2);
       } catch (error) {
         console.error("Error in public dashboard:", error);
+        // Update fields with "Error" if call fails
+        document.getElementById("price").innerText = "Error";
+        document.getElementById("totalValue").innerText = "Error";
+        document.getElementById("apr").innerText = "Error";
       }
     }
     
@@ -307,8 +312,14 @@
     
     // Combined function to refresh all dashboard data
     async function refreshDashboard() {
-      await refreshPublicDashboard();
-      await refreshWalletDashboard();
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        await refreshPublicDashboard();
+        await refreshWalletDashboard();
+      } finally {
+        refreshing = false;
+      }
     }
     
     // Stake tokens function
@@ -409,7 +420,7 @@
       }
     }
     
-    // Event listeners for buttons
+    // Event listeners
     document.getElementById("connectWallet").addEventListener("click", connectWallet);
     document.getElementById("stakeButton").addEventListener("click", stakeTokens);
     document.getElementById("unstakeButton").addEventListener("click", unstakeTokens);
@@ -417,8 +428,8 @@
     document.getElementById("maxUnstake").addEventListener("click", maxUnstake);
     document.getElementById("claimRewardButton").addEventListener("click", claimReward);
     
-    // Auto-refresh the entire dashboard every 5 seconds
-    setInterval(refreshDashboard, 5000);
+    // Auto-refresh the entire dashboard every 10 seconds
+    setInterval(refreshDashboard, 10000);
     // Immediately refresh public dashboard on load
     refreshPublicDashboard();
   </script>
