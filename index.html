@@ -2,16 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Staking & APR Dashboard</title>
+  <title>Staking Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Sử dụng Roboto cho giao diện hiện đại -->
+  <!-- Using Roboto for a modern look -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     :root {
       --primary-color: #9c27b0;
       --primary-dark: #7b1fa2;
+      --accent-color: #ab47bc;
       --background-color: #f5f5f5;
       --text-color: #333;
     }
@@ -20,7 +21,7 @@
       margin: 0;
       padding: 0;
       font-family: 'Roboto', sans-serif;
-      background: linear-gradient(135deg, #ce93d8, #ab47bc);
+      background: linear-gradient(135deg, #d1c4e9, #9575cd);
       color: var(--text-color);
       display: flex;
       justify-content: center;
@@ -29,51 +30,61 @@
     }
     .container {
       width: 95%;
-      max-width: 1200px;
+      max-width: 1000px;
       margin: 20px auto;
+      padding: 20px;
+      background: rgba(255,255,255,0.97);
+      border-radius: 12px;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+      animation: fadeIn 1s ease;
     }
     header {
       text-align: center;
       margin-bottom: 30px;
-      color: #fff;
     }
     header h1 {
-      font-size: 2.5rem;
+      font-size: 2.8rem;
       margin: 0;
-      text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+      color: var(--primary-color);
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
     }
     header button {
       background: var(--primary-color);
       border: none;
       color: #fff;
       padding: 10px 20px;
-      margin-top: 10px;
+      margin-top: 15px;
       border-radius: 5px;
-      font-size: 1rem;
+      font-size: 1.1rem;
       cursor: pointer;
       transition: background 0.3s ease, transform 0.3s ease;
     }
     header button:hover {
       background: var(--primary-dark);
-      transform: scale(1.05);
+      transform: translateY(-2px);
     }
     .card {
       background: #fff;
       border-radius: 10px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-      padding: 20px;
+      padding: 20px 25px;
       margin-bottom: 20px;
-      animation: fadeInUp 0.8s ease both;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-5px);
     }
     .card h2 {
       margin-top: 0;
       color: var(--primary-color);
       border-bottom: 2px solid var(--primary-color);
-      padding-bottom: 5px;
+      padding-bottom: 8px;
+      font-size: 1.8rem;
     }
     .card p {
-      margin: 10px 0;
+      margin: 12px 0;
       font-size: 1rem;
+      line-height: 1.5;
     }
     .card button {
       background: var(--primary-color);
@@ -88,7 +99,7 @@
     }
     .card button:hover {
       background: var(--primary-dark);
-      transform: scale(1.05);
+      transform: scale(1.03);
     }
     .input-group {
       display: flex;
@@ -101,23 +112,50 @@
       font-size: 1rem;
       border: 1px solid #ddd;
       border-radius: 5px;
-      margin-right: 10px;
+      margin-right: 15px;
+      transition: border-color 0.3s;
+    }
+    .input-group input:focus {
+      border-color: var(--primary-color);
+      outline: none;
     }
     .input-group button {
       padding: 10px 15px;
+      margin-right: 10px;
+      background: var(--accent-color);
+      border: none;
+      color: #fff;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.3s;
     }
-    /* Style cho nhóm button liên kết */
+    .input-group button:hover {
+      background: var(--primary-dark);
+      transform: scale(1.03);
+    }
     .button-group {
       display: flex;
       justify-content: center;
-      gap: 15px;
+      gap: 20px;
       margin-top: 20px;
     }
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+    .button-group a {
+      background: var(--primary-color);
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-size: 1rem;
+      transition: background 0.3s, transform 0.3s;
     }
-    /* Responsive layout */
+    .button-group a:hover {
+      background: var(--primary-dark);
+      transform: scale(1.03);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
     @media (min-width: 768px) {
       .flex-row { display: flex; gap: 20px; }
       .flex-row .card { flex: 1; }
@@ -126,17 +164,24 @@
 </head>
 <body>
   <div class="container">
+    <!-- Header with title and connect wallet button -->
+    <header>
+      <h1>Staking Dashboard</h1>
+      <button id="connectWallet">Connect Wallet</button>
+      <!-- Display wallet address with prefix -->
+      <div id="walletAddress"></div>
+    </header>
     
-    <!-- Dashboard & APR Section (luôn hiển thị, không cần kết nối ví) -->
+    <!-- Public Dashboard: always visible and auto-refreshes every 10 seconds -->
     <div class="card" id="publicDashboard">
-      <h2>Dashboard & APR</h2>
-      <p>Price of Monapepe (in MON): <span id="price">-</span></p>
-      <p>Total Staked Value (in MON): <span id="totalValue">-</span></p>
-      <p>APR: <span id="apr">-</span>%</p>
+      <h2>Dashboard</h2>
+      <p>Price (in MON): <span id="price">-</span></p>
+      <p>TVL (in MON): <span id="totalValue">-</span></p>
+      <p>APR: <span id="apr">-</span>% / YEAR</p>
     </div>
     
-    <!-- Staking Interface Section (chỉ hiển thị khi ví được kết nối) -->
-    <div class="card" id="walletDashboard" style="display:none;">
+    <!-- Wallet Dashboard: only visible after wallet connection -->
+    <div class="card" id="walletDashboard" style="display: none;">
       <h2>Staking Interface</h2>
       <p>Token Balance: <span id="tokenBalance">0</span></p>
       <p>Your Staked Amount: <span id="userStaked">0</span></p>
@@ -154,41 +199,35 @@
       </div>
     </div>
     
-    <!-- Phần kết nối ví -->
-    <header>
-      <button id="connectWallet">Connect Wallet</button>
-      <div id="walletAddress"></div>
-    </header>
-    
-    <!-- Phần các button liên kết (ở cuối trang) -->
+    <!-- Quick Links Section -->
     <div class="card">
       <h2>Quick Links</h2>
       <div class="button-group">
-        <button onclick="window.open('https://t.me/themonapepe', '_blank')">Telegram</button>
-        <button onclick="window.open('https://www.defined.fi/mon-test/0x4a0a2b293a34c54d0965d23f8131a3d2c0b91290?quoteToken=token1&cache=ce97d&quoteCurrency=TOKEN', '_blank')">Defined.fi</button>
-        <button onclick="window.open('https://testnet.nad.fun/tokens/0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA', '_blank')">nad.fun</button>
+        <a href="https://t.me/themonapepe" target="_blank">Telegram</a>
+        <a href="https://www.defined.fi/mon-test/0x4a0a2b293a34c54d0965d23f8131a3d2c0b91290?quoteToken=token1&cache=ce97d&quoteCurrency=TOKEN" target="_blank">Defined.fi</a>
+        <a href="https://testnet.nad.fun/tokens/0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA" target="_blank">nad.fun</a>
       </div>
     </div>
   </div>
   
   <script>
-    // Cấu hình RPC (Monad Testnet)
+    // RPC configuration for Monad Testnet
     const rpcUrl = "https://testnet-rpc.monad.xyz";
     const chainId = 10143;
-    // Read-only provider dùng để lấy dữ liệu public (Dashboard & APR)
+    // Use a read-only provider for public dashboard data
     const readonlyProvider = new ethers.providers.JsonRpcProvider(rpcUrl, chainId);
     
-    // Các biến toàn cục cho ví (sẽ được khởi tạo khi ví kết nối)
+    // Global variables for wallet-connected functionality
     let provider, signer, userAddress;
     let tokenContract, stakingContract;
     
-    // Địa chỉ hợp đồng
+    // Contract addresses
     const poolAddress      = "0x4a0A2B293A34c54d0965D23f8131A3D2c0b91290";  // Uniswap V2 pool
     const wETHAddress      = "0x3bb9AFB94c82752E47706A10779EA525Cf95dc27";  // wETH token
     const monapepeAddress  = "0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA";  // Monapepe token
     const stakingAddress   = "0x9a6F85f4090292eE248B2C999a3E1422B1297177";  // Staking contract
-
-    // ABIs
+    
+    // Minimal ABIs for required contracts
     const poolABI = [
       "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
       "function token0() external view returns (address)",
@@ -208,7 +247,10 @@
       "function allowance(address owner, address spender) external view returns (uint256)"
     ];
     
-    // Hàm refresh Dashboard & APR (sử dụng read-only provider)
+    // Global lock to prevent overlapping refresh calls
+    let refreshing = false;
+    
+    // Refresh public dashboard data (Price, TVL, APR)
     async function refreshPublicDashboard() {
       try {
         const poolContract = new ethers.Contract(poolAddress, poolABI, readonlyProvider);
@@ -229,7 +271,7 @@
         const rWETH = parseFloat(ethers.utils.formatEther(reserveWETH));
         const rMonapepe = parseFloat(ethers.utils.formatEther(reserveMonapepe));
         const price = rWETH / rMonapepe;
-        document.getElementById("price").innerText = price; // không làm tròn
+        document.getElementById("price").innerText = price; // No rounding
         
         const stakingContractRO = new ethers.Contract(stakingAddress, stakingABI, readonlyProvider);
         const totalStakedBN = await stakingContractRO.totalStaked();
@@ -244,10 +286,14 @@
         document.getElementById("apr").innerText = apr.toFixed(2);
       } catch (error) {
         console.error("Error in public dashboard:", error);
+        // Update fields with "Error" if call fails
+        document.getElementById("price").innerText = "Error";
+        document.getElementById("totalValue").innerText = "Error";
+        document.getElementById("apr").innerText = "Error";
       }
     }
     
-    // Hàm refresh thông tin ví (chỉ khi ví được kết nối)
+    // Refresh wallet dashboard data (Token Balance, Staked Amount, Pending Reward)
     async function refreshWalletDashboard() {
       if (!tokenContract || !stakingContract || !userAddress) return;
       try {
@@ -264,13 +310,19 @@
       }
     }
     
-    // Hàm kết hợp refresh toàn bộ dashboard
+    // Combined function to refresh all dashboard data
     async function refreshDashboard() {
-      await refreshPublicDashboard();
-      await refreshWalletDashboard();
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        await refreshPublicDashboard();
+        await refreshWalletDashboard();
+      } finally {
+        refreshing = false;
+      }
     }
     
-    // Các hàm giao dịch
+    // Stake tokens function
     async function stakeTokens() {
       const amount = document.getElementById("stakeAmount").value;
       if (!amount || isNaN(amount)) {
@@ -293,6 +345,7 @@
       }
     }
     
+    // Unstake tokens function
     async function unstakeTokens() {
       const amount = document.getElementById("unstakeAmount").value;
       if (!amount || isNaN(amount)) {
@@ -309,6 +362,7 @@
       }
     }
     
+    // Claim reward function
     async function claimReward() {
       try {
         const tx = await stakingContract.claimReward();
@@ -320,6 +374,7 @@
       }
     }
     
+    // "Max" stake function
     async function maxStake() {
       try {
         const tokenBalBN = await tokenContract.balanceOf(userAddress);
@@ -329,6 +384,7 @@
       }
     }
     
+    // "Max" unstake function
     async function maxUnstake() {
       try {
         const userStakedBN = await stakingContract.getStakedAmount(userAddress);
@@ -338,7 +394,7 @@
       }
     }
     
-    // Hàm kết nối ví
+    // Connect wallet function
     async function connectWallet() {
       if (!window.ethereum) {
         console.error("MetaMask not installed.");
@@ -350,11 +406,13 @@
         provider.ens = null;
         signer = provider.getSigner();
         userAddress = await signer.getAddress();
+        // Display wallet address with prefix "Connected: "
         document.getElementById("walletAddress").innerText = "Connected: " + userAddress;
         
         tokenContract = new ethers.Contract(monapepeAddress, tokenABI, signer);
         stakingContract = new ethers.Contract(stakingAddress, stakingABI, signer);
         
+        // Show wallet dashboard and refresh data
         document.getElementById("walletDashboard").style.display = "block";
         refreshDashboard();
       } catch (error) {
@@ -362,7 +420,7 @@
       }
     }
     
-    // Gán sự kiện cho các nút
+    // Event listeners
     document.getElementById("connectWallet").addEventListener("click", connectWallet);
     document.getElementById("stakeButton").addEventListener("click", stakeTokens);
     document.getElementById("unstakeButton").addEventListener("click", unstakeTokens);
@@ -370,10 +428,9 @@
     document.getElementById("maxUnstake").addEventListener("click", maxUnstake);
     document.getElementById("claimRewardButton").addEventListener("click", claimReward);
     
-    // Auto-refresh toàn bộ dashboard mỗi 5 giây
-    setInterval(refreshDashboard, 5000);
-    
-    // Tự động refresh public dashboard ngay khi tải trang
+    // Auto-refresh the entire dashboard every 10 seconds
+    setInterval(refreshDashboard, 10000);
+    // Immediately refresh public dashboard on load
     refreshPublicDashboard();
   </script>
 </body>
