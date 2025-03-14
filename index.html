@@ -16,9 +16,7 @@
       --background-color: #f5f5f5;
       --text-color: #333;
     }
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       padding: 0;
@@ -114,7 +112,7 @@
       font-size: 1rem;
       border: 1px solid #ddd;
       border-radius: 5px;
-      margin-right: 15px; /* Increased spacing */
+      margin-right: 15px;
       transition: border-color 0.3s;
     }
     .input-group input:focus {
@@ -123,7 +121,7 @@
     }
     .input-group button {
       padding: 10px 15px;
-      margin-right: 10px; /* Add extra spacing between buttons */
+      margin-right: 10px;
       background: var(--accent-color);
       border: none;
       color: #fff;
@@ -135,7 +133,6 @@
       background: var(--primary-dark);
       transform: scale(1.03);
     }
-    /* Quick Links styling */
     .button-group {
       display: flex;
       justify-content: center;
@@ -169,9 +166,9 @@
   <div class="container">
     <!-- Header with title and connect wallet button -->
     <header>
-      <h1>Staking & APR Dashboard</h1>
+      <h1>Staking Dashboard</h1>
       <button id="connectWallet">Connect Wallet</button>
-      <!-- Wallet address now includes prefix "Connected: " -->
+      <!-- Display wallet address with prefix -->
       <div id="walletAddress"></div>
     </header>
     
@@ -250,7 +247,7 @@
       "function allowance(address owner, address spender) external view returns (uint256)"
     ];
     
-    // Refresh public dashboard data (Price, Total Staked Value, APR)
+    // Refresh public dashboard data (Price, TVL, APR)
     async function refreshPublicDashboard() {
       try {
         const poolContract = new ethers.Contract(poolAddress, poolABI, readonlyProvider);
@@ -308,13 +305,13 @@
       }
     }
     
-    // Combined dashboard refresh function
+    // Combined function to refresh all dashboard data
     async function refreshDashboard() {
       await refreshPublicDashboard();
       await refreshWalletDashboard();
     }
     
-    // Function to stake tokens
+    // Stake tokens function
     async function stakeTokens() {
       const amount = document.getElementById("stakeAmount").value;
       if (!amount || isNaN(amount)) {
@@ -337,7 +334,7 @@
       }
     }
     
-    // Function to unstake tokens
+    // Unstake tokens function
     async function unstakeTokens() {
       const amount = document.getElementById("unstakeAmount").value;
       if (!amount || isNaN(amount)) {
@@ -354,7 +351,7 @@
       }
     }
     
-    // Function to claim reward
+    // Claim reward function
     async function claimReward() {
       try {
         const tx = await stakingContract.claimReward();
@@ -366,7 +363,7 @@
       }
     }
     
-    // Function for "Max" stake
+    // "Max" stake function
     async function maxStake() {
       try {
         const tokenBalBN = await tokenContract.balanceOf(userAddress);
@@ -376,7 +373,7 @@
       }
     }
     
-    // Function for "Max" unstake
+    // "Max" unstake function
     async function maxUnstake() {
       try {
         const userStakedBN = await stakingContract.getStakedAmount(userAddress);
@@ -386,7 +383,7 @@
       }
     }
     
-    // Function to connect wallet
+    // Connect wallet function
     async function connectWallet() {
       if (!window.ethereum) {
         console.error("MetaMask not installed.");
