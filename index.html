@@ -5,7 +5,7 @@
   <title>Staking Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Sử dụng font Roboto cho giao diện hiện đại -->
+  <!-- Sử dụng Roboto cho giao diện hiện đại -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
@@ -106,6 +106,13 @@
     .input-group button {
       padding: 10px 15px;
     }
+    /* Style cho nhóm button liên kết */
+    .button-group {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 20px;
+    }
     @keyframes fadeInUp {
       from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
@@ -119,6 +126,7 @@
 </head>
 <body>
   <div class="container">
+    
     <!-- Dashboard & APR Section (luôn hiển thị, không cần kết nối ví) -->
     <div class="card" id="publicDashboard">
       <h2>Dashboard & APR</h2>
@@ -146,11 +154,21 @@
       </div>
     </div>
     
-    <!-- Kết nối ví -->
+    <!-- Phần kết nối ví -->
     <header>
       <button id="connectWallet">Connect Wallet</button>
       <div id="walletAddress"></div>
     </header>
+    
+    <!-- Phần các button liên kết (ở cuối trang) -->
+    <div class="card">
+      <h2>Quick Links</h2>
+      <div class="button-group">
+        <button onclick="window.open('https://t.me/themonapepe', '_blank')">Telegram</button>
+        <button onclick="window.open('https://www.defined.fi/mon-test/0x4a0a2b293a34c54d0965d23f8131a3d2c0b91290?quoteToken=token1&cache=ce97d&quoteCurrency=TOKEN', '_blank')">Defined.fi</button>
+        <button onclick="window.open('https://testnet.nad.fun/tokens/0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA', '_blank')">nad.fun</button>
+      </div>
+    </div>
   </div>
   
   <script>
@@ -160,7 +178,7 @@
     // Read-only provider dùng để lấy dữ liệu public (Dashboard & APR)
     const readonlyProvider = new ethers.providers.JsonRpcProvider(rpcUrl, chainId);
     
-    // Các biến toàn cục cho wallet (sẽ được khởi tạo khi ví kết nối)
+    // Các biến toàn cục cho ví (sẽ được khởi tạo khi ví kết nối)
     let provider, signer, userAddress;
     let tokenContract, stakingContract;
     
@@ -170,7 +188,7 @@
     const monapepeAddress  = "0xB31be452692c5d7e2C1c3eD3FbD769a2723e3BEA";  // Monapepe token
     const stakingAddress   = "0x9a6F85f4090292eE248B2C999a3E1422B1297177";  // Staking contract
 
-    // ABIs (các ABI tối thiểu)
+    // ABIs
     const poolABI = [
       "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
       "function token0() external view returns (address)",
@@ -193,7 +211,6 @@
     // Hàm refresh Dashboard & APR (sử dụng read-only provider)
     async function refreshPublicDashboard() {
       try {
-        // Lấy dữ liệu từ pool Uniswap
         const poolContract = new ethers.Contract(poolAddress, poolABI, readonlyProvider);
         const reserves = await poolContract.getReserves();
         const token0 = await poolContract.token0();
@@ -209,22 +226,18 @@
           console.error("Pool does not contain the expected tokens.");
           return;
         }
-        // Chuyển đổi reserves (giả sử 18 decimals)
         const rWETH = parseFloat(ethers.utils.formatEther(reserveWETH));
         const rMonapepe = parseFloat(ethers.utils.formatEther(reserveMonapepe));
-        // Giá của Monapepe = R_wETH / R_Monapepe (đơn vị MON)
         const price = rWETH / rMonapepe;
-        document.getElementById("price").innerText = price;
+        document.getElementById("price").innerText = price; // không làm tròn
         
-        // Lấy dữ liệu tổng số Monapepe staked từ hợp đồng staking
         const stakingContractRO = new ethers.Contract(stakingAddress, stakingABI, readonlyProvider);
         const totalStakedBN = await stakingContractRO.totalStaked();
         const totalStaked = parseFloat(ethers.utils.formatEther(totalStakedBN));
         document.getElementById("totalValue").innerText = (totalStaked * price).toFixed(6);
         
-        // Tính APR: (annualReward / totalValue) * 100, với annualReward = 8765 MON
-        let apr = 0;
         const totalValue = totalStaked * price;
+        let apr = 0;
         if (totalValue > 0) {
           apr = (8765 / totalValue) * 100;
         }
@@ -234,7 +247,7 @@
       }
     }
     
-    // Hàm refresh thông tin ví (chỉ chạy khi ví đã được kết nối)
+    // Hàm refresh thông tin ví (chỉ khi ví được kết nối)
     async function refreshWalletDashboard() {
       if (!tokenContract || !stakingContract || !userAddress) return;
       try {
@@ -257,7 +270,7 @@
       await refreshWalletDashboard();
     }
     
-    // Các hàm giao dịch (stake, unstake, claim reward)
+    // Các hàm giao dịch
     async function stakeTokens() {
       const amount = document.getElementById("stakeAmount").value;
       if (!amount || isNaN(amount)) {
@@ -307,7 +320,6 @@
       }
     }
     
-    // Hàm "Max" cho stake/unstake
     async function maxStake() {
       try {
         const tokenBalBN = await tokenContract.balanceOf(userAddress);
@@ -326,7 +338,7 @@
       }
     }
     
-    // Hàm kết nối ví (khi người dùng bấm nút Connect Wallet)
+    // Hàm kết nối ví
     async function connectWallet() {
       if (!window.ethereum) {
         console.error("MetaMask not installed.");
@@ -340,11 +352,9 @@
         userAddress = await signer.getAddress();
         document.getElementById("walletAddress").innerText = "Connected: " + userAddress;
         
-        // Khởi tạo contract với signer cho các chức năng giao dịch
         tokenContract = new ethers.Contract(monapepeAddress, tokenABI, signer);
         stakingContract = new ethers.Contract(stakingAddress, stakingABI, signer);
         
-        // Hiển thị thông tin ví (các mục này chỉ hiển thị khi kết nối ví)
         document.getElementById("walletDashboard").style.display = "block";
         refreshDashboard();
       } catch (error) {
@@ -363,7 +373,7 @@
     // Auto-refresh toàn bộ dashboard mỗi 5 giây
     setInterval(refreshDashboard, 5000);
     
-    // Cũng tự động refresh phần dashboard công khai ngay cả khi ví chưa kết nối
+    // Tự động refresh public dashboard ngay khi tải trang
     refreshPublicDashboard();
   </script>
 </body>
